@@ -1,0 +1,11 @@
+{
+  "servers": {
+    "mcp.soubiran.dev": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "/Users/esoub/dev/p/mcp.soubiran.dev/dist/index.js"
+      ]
+    }
+  }
+}
