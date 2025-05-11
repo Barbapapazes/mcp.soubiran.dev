@@ -1,23 +1,32 @@
 {
-  "name": "mcp.soubiran.dev",
-  "private": true,
+  "name": "@barbapapazes/mcp.soubiran.dev",
   "type": "module",
-  "scripts": {
-    "build": "tsdown"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "version": "0.0.0",
   "packageManager": "pnpm@10.10.0",
-  "devDependencies": {
-    "@tsconfig/node22": "^22.0.1",
-    "tsdown": "^0.11.2",
-    "typescript": "^5.8.3"
+  "author": "Estéban Soubiran <esteban@soubiran.dev>",
+  "homepage": "https://github.com/barbapapazes/mcp.soubiran.dev#readme",
+  "keywords": [],
+  "bin": {
+    "@barbapapazes/mcp.soubiran.dev": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "lint": "eslint",
+    "lint:fix": "eslint --fix",
+    "release": "npm run lint && npm run build && changelogen --release && npm publish && git push --follow-tags"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.11.1",
     "ofetch": "^1.4.1",
     "zod": "^3.24.4",
     "zod-to-json-schema": "^3.24.5"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^4.13.0",
+    "@tsconfig/node22": "^22.0.1",
+    "changelogen": "^0.6.1",
+    "eslint": "^9.26.0",
+    "tsdown": "^0.11.2",
+    "typescript": "^5.8.3"
   }
 }
