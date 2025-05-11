@@ -13,7 +13,7 @@
     "build": "tsdown",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
-    "release": "npm run lint && npm run build && changelogen --release && npm publish && git push --follow-tags"
+    "release": "npm run lint && npm run build && changelogen --release && npm publish --access public && git push --follow-tags"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.11.1",
