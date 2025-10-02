@@ -8,9 +8,18 @@ export default defineNitroConfig({
   compatibilityDate: 'latest',
   srcDir: 'server',
 
+  preset: 'cloudflare-module',
+
+  minify: false,
+
   cloudflare: {
+    nodeCompat: true,
+    deployConfig: true,
     wrangler: {
       name: 'mcp-soubiran-dev',
+      compatibility_flags: [
+        'nodejs_compat_v2',
+      ],
       observability: {
         enabled: true,
         head_sampling_rate: 0.1,
