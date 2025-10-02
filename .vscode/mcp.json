@@ -1,0 +1,9 @@
+{
+  "servers": {
+    "mcp.soubiran.dev": {
+      "url": "http://localhost:3000",
+      "type": "http"
+    }
+  },
+  "inputs": []
+}
