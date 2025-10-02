@@ -3,20 +3,25 @@
   "private": true,
   "packageManager": "pnpm@10.17.1",
   "scripts": {
-    "build": "nitro build",
-    "dev": "nitro dev",
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
     "lint": "eslint",
-    "lint:fix": "eslint --fix"
+    "lint:fix": "eslint --fix",
+    "start": "wrangler dev",
+    "cf-typegen": "wrangler types"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.18.2",
-    "zod": "^4.1.11"
+    "agents": "^0.2.7",
+    "ofetch": "^1.4.1",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^5.4.1",
+    "@types/node": "^24.6.1",
     "eslint": "^9.36.0",
-    "h3": "^1.15.4",
-    "nitropack": "^2.12.6",
-    "taze": "^19.7.0"
+    "taze": "^19.7.0",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.40.3"
   }
 }
