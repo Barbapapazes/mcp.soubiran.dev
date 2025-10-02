@@ -10,7 +10,7 @@ export default defineNitroConfig({
 
   cloudflare: {
     wrangler: {
-      name: 'barbapapazes-mcp-soubiran-dev',
+      name: 'mcp-soubiran-dev',
       observability: {
         enabled: true,
         head_sampling_rate: 0.1,
