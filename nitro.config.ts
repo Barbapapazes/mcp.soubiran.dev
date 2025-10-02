@@ -8,10 +8,6 @@ export default defineNitroConfig({
   compatibilityDate: 'latest',
   srcDir: 'server',
 
-  preset: 'cloudflare-module',
-
-  minify: false,
-
   cloudflare: {
     nodeCompat: true,
     deployConfig: true,
@@ -24,6 +20,12 @@ export default defineNitroConfig({
         enabled: true,
         head_sampling_rate: 0.1,
       },
+    },
+  },
+
+  unenv: {
+    alias: {
+      'safer-buffer': 'node:buffer',
     },
   },
 })
