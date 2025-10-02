@@ -7,4 +7,13 @@ export default defineNitroConfig({
 
   compatibilityDate: 'latest',
   srcDir: 'server',
+
+  cloudflare: {
+    wrangler: {
+      observability: {
+        enabled: true,
+        head_sampling_rate: 0.1,
+      },
+    },
+  },
 })
