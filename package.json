@@ -17,9 +17,9 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@antfu/eslint-config": "^5.4.1",
+    "@antfu/eslint-config": "^9.0.0",
     "@types/node": "^24.6.1",
-    "eslint": "^9.39.4",
+    "eslint": "^10.4.0",
     "taze": "^19.7.0",
     "typescript": "^5.9.3",
     "wrangler": "^4.40.3"
