@@ -6,28 +6,25 @@
   "compatibility_flags": [
     "nodejs_compat"
   ],
-  "migrations": [
+  "vars": {
+    "BASE_URL": "https://soubiran.dev/meta.en.json"
+  },
+  "ai_search": [
     {
-      "new_sqlite_classes": [
-        "SoubiranMcp"
-      ],
-      "tag": "v1"
+      "binding": "AI_SEARCH",
+      "instance_name": "markdown-soubiran-dev",
+      "remote": true
     }
   ],
-  "durable_objects": {
-    "bindings": [
-      {
-        "class_name": "SoubiranMcp",
-        "name": "MCP_OBJECT"
-      }
-    ]
-  },
-  "vars": {
-    "BASE_API_URL": "https://soubiran.dev/api/mcp"
-
-  },
   "observability": {
     "enabled": true,
-    "head_sampling_rate": 0.1
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 0.1
+    },
+    "logs": {
+      "invocation_logs": false,
+      "head_sampling_rate": 1
+    }
   }
 }

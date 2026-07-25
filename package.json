@@ -11,10 +11,13 @@
     "cf-typegen": "wrangler types"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.18.2",
-    "agents": "^0.2.7",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@sentry/cloudflare": "^10.68.0",
+    "agents": "^0.19.0",
+    "better-result": "^2.10.0",
+    "evlog": "^2.22.3",
     "ofetch": "^1.4.1",
-    "zod": "^3.25.76"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^5.4.1",
@@ -22,6 +25,6 @@
     "eslint": "^9.39.4",
     "taze": "^19.7.0",
     "typescript": "^5.9.3",
-    "wrangler": "^4.40.3"
+    "wrangler": "^4.114.0"
   }
 }
