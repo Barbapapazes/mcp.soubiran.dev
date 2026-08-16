@@ -2,17 +2,15 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import * as Sentry from '@sentry/cloudflare'
 import { createMcpHandler } from 'agents/mcp'
 import { createWorkersLogger } from 'evlog/workers'
-import { registerGetPageTool } from './tools/get-page'
-import { registerSearchPagesTool } from './tools/search-pages'
+import { registerContentTools } from './tools/content'
 
-function createServer(env: Env) {
+async function createServer(env: Env) {
   const server = new McpServer({
     name: 'Estéban\'s MCP Server for soubiran.dev',
     version: '1.0.0',
   })
 
-  registerGetPageTool(server, env)
-  registerSearchPagesTool(server, env)
+  await registerContentTools(server, env)
 
   return server
 }
@@ -35,7 +33,7 @@ export default Sentry.withSentry(
 
       try {
         response = url.pathname === '/mcp'
-          ? await createMcpHandler(createServer(env), { route: '/mcp' })(request, env, ctx)
+          ? await createMcpHandler(await createServer(env), { route: '/mcp' })(request, env, ctx)
           : Response.redirect('https://soubiran.dev', 302)
       }
       catch (error) {

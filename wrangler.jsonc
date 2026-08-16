@@ -2,18 +2,25 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "mcp-soubiran-dev",
   "main": "src/index.ts",
-  "compatibility_date": "2025-03-10",
+  "compatibility_date": "2026-03-27",
   "compatibility_flags": [
     "nodejs_compat"
   ],
   "vars": {
-    "BASE_URL": "https://soubiran.dev/meta.en.json"
+    "PAGES_BASE_URL": "https://soubiran.dev/pages.json",
+    "TALKS_BASE_URL": "https://talks.soubiran.dev/talks.json",
+    "INFRA_BASE_URL": "https://infra.soubiran.dev/pages.json"
   },
-  "ai_search": [
+  "ai_search_namespaces": [
     {
       "binding": "AI_SEARCH",
-      "instance_name": "markdown-soubiran-dev",
+      "namespace": "soubiran-dev",
       "remote": true
+    }
+  ],
+  "worker_loaders": [
+    {
+      "binding": "CONTENT_LOADER"
     }
   ],
   "observability": {
