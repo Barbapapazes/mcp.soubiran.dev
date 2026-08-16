@@ -43,6 +43,12 @@ export const infraCatalogSchema = z.object({
 }).strict()
 export type InfraCatalog = z.infer<typeof infraCatalogSchema>
 
+function markdownUrl(url: string) {
+  const documentUrl = new URL(url)
+  documentUrl.pathname = documentUrl.pathname === '/' ? '/index.md' : `${documentUrl.pathname.replace(/\/$/, '')}.md`
+  return documentUrl.toString()
+}
+
 export const infraAdapter: ContentAdapter<InfraCatalog, InfraPage> = {
   category: 'infra',
   instanceId: 'infra',
@@ -68,7 +74,7 @@ export const infraAdapter: ContentAdapter<InfraCatalog, InfraPage> = {
   format: page => ({ id: page.id, title: page.title, url: page.url, description: page.description, type: page.type, language: page.language }),
   async retrieve(page) {
     try {
-      return await ofetch(page.url, { headers: { Accept: 'text/markdown, text/plain;q=0.9' }, responseType: 'text' })
+      return await ofetch(markdownUrl(page.url), { headers: { Accept: 'text/markdown, text/plain;q=0.9' }, responseType: 'text' })
     }
     catch (cause) {
       throw new ContentRetrievalError({ category: 'infra', cause })

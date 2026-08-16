@@ -44,6 +44,12 @@ export const pagesCatalogSchema = z.object({
 export type Page = z.infer<typeof pageSchema>
 export type PagesCatalog = z.infer<typeof pagesCatalogSchema>
 
+function markdownUrl(url: string) {
+  const documentUrl = new URL(url)
+  documentUrl.pathname = documentUrl.pathname === '/' ? '/index.md' : `${documentUrl.pathname.replace(/\/$/, '')}.md`
+  return documentUrl.toString()
+}
+
 export const pagesAdapter: ContentAdapter<PagesCatalog, Page> = {
   category: 'pages',
   instanceId: 'soubiran-dev',
@@ -77,7 +83,7 @@ export const pagesAdapter: ContentAdapter<PagesCatalog, Page> = {
   }),
   async retrieve(entry) {
     try {
-      return await ofetch(entry.url, { headers: { Accept: 'text/markdown, text/plain;q=0.9' }, responseType: 'text' })
+      return await ofetch(markdownUrl(entry.url), { headers: { Accept: 'text/markdown, text/plain;q=0.9' }, responseType: 'text' })
     }
     catch (cause) {
       throw new ContentRetrievalError({ category: 'pages', cause })

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { categoriesByInstanceId, contentAdapters } from '../src/tools/content/adapters'
 import { infraAdapter, infraCatalogSchema } from '../src/tools/content/adapters/infra'
 import { pagesAdapter, pagesCatalogSchema, pageSchema } from '../src/tools/content/adapters/pages'
@@ -71,6 +71,10 @@ function sourceCapturingMockLoader(response: { error?: string, resultJson?: stri
   return { loader, source: () => source }
 }
 
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
+
 describe('content adapters', () => {
   it('strictly validates source catalogs while preserving recursive infra data', () => {
     expect(pageSchema.parse(page)).toEqual(page)
@@ -89,6 +93,28 @@ describe('content adapters', () => {
     expect(talksAdapter.findBySource(talks, talk.links.transcript)).toEqual(talk)
     expect(infraAdapter.findBySource(infraCatalog, infra.url)).toEqual(infra)
     await expect(talksAdapter.retrieve({ ...talk, links: { ...talk.links, transcript: undefined } })).rejects.toMatchObject({ message: expect.stringContaining('No transcript') })
+  })
+
+  it('retrieves Markdown documents from their published URLs', async () => {
+    const requestedUrls: string[] = []
+    vi.stubGlobal('fetch', async (input: string | URL | Request) => {
+      requestedUrls.push(typeof input === 'string' ? input : input.toString())
+      return new Response('# Document')
+    })
+
+    await expect(pagesAdapter.retrieve(page)).resolves.toBe('# Document')
+    await expect(pagesAdapter.retrieve({ ...page, url: 'https://soubiran.dev' })).resolves.toBe('# Document')
+    await expect(infraAdapter.retrieve(infra)).resolves.toBe('# Document')
+    await expect(infraAdapter.retrieve({ ...infra, url: 'https://infra.soubiran.dev/' })).resolves.toBe('# Document')
+    await expect(talksAdapter.retrieve(talk)).resolves.toBe('# Document')
+
+    expect(requestedUrls).toEqual([
+      'https://soubiran.dev/posts/page.md',
+      'https://soubiran.dev/index.md',
+      'https://infra.soubiran.dev/infra.md',
+      'https://infra.soubiran.dev/index.md',
+      'https://talks.soubiran.dev/talk-1/transcript.en.md',
+    ])
   })
 
   it('maps each configured search instance to exactly one content category', () => {

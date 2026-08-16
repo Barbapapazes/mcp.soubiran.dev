@@ -37,6 +37,12 @@ export const talksCatalogSchema = z.object({
 export type TalksCatalog = z.infer<typeof talksCatalogSchema>
 export type Talk = z.infer<typeof talkSchema>
 
+function transcriptUrl(talk: Talk) {
+  const documentUrl = new URL(talk.url)
+  documentUrl.pathname = `${documentUrl.pathname.replace(/\/$/, '')}/transcript.${talk.language}.md`
+  return documentUrl.toString()
+}
+
 export function talkTopics(catalog: TalksCatalog) {
   return [...new Set(catalog.data.flatMap(talk => talk.topics))].sort((a, b) => a.localeCompare(b))
 }
@@ -80,7 +86,7 @@ export const talksAdapter: ContentAdapter<TalksCatalog, Talk> = {
     }
 
     try {
-      return await ofetch(talk.links.transcript, { headers: { Accept: 'text/markdown, text/plain;q=0.9' }, responseType: 'text' })
+      return await ofetch(transcriptUrl(talk), { headers: { Accept: 'text/markdown, text/plain;q=0.9' }, responseType: 'text' })
     }
     catch (cause) {
       throw new ContentRetrievalError({ category: 'talks', cause })
