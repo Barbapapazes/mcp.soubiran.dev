@@ -62,15 +62,6 @@ export const infraAdapter: ContentAdapter<InfraCatalog, InfraPage> = {
   },
   entries: catalog => catalog.data,
   findById: (catalog, id) => catalog.data.find(page => page.id === id),
-  findBySource(directory, source) {
-    try {
-      const normalized = new URL(source).toString()
-      return directory.data.find(page => page.url === normalized)
-    }
-    catch {
-      return undefined
-    }
-  },
   format: page => ({ id: page.id, title: page.title, url: page.url, description: page.description, type: page.type, language: page.language }),
   async retrieve(page) {
     try {

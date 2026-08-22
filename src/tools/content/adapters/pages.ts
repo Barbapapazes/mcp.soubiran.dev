@@ -63,15 +63,6 @@ export const pagesAdapter: ContentAdapter<PagesCatalog, Page> = {
   },
   entries: catalog => catalog.data,
   findById: (catalog, id) => catalog.data.find(entry => entry.id === id),
-  findBySource(catalog, source) {
-    try {
-      const normalized = new URL(source).toString()
-      return catalog.data.find(entry => entry.url === normalized)
-    }
-    catch {
-      return undefined
-    }
-  },
   format: entry => ({
     id: entry.id,
     title: entry.title,

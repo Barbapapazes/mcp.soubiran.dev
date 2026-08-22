@@ -18,11 +18,11 @@ async function loadDirectory(env: Env, category: ContentCategory) {
   }
 }
 
-function findFromSource(category: ContentCategory, directory: unknown, source: string) {
+function findFromId(category: ContentCategory, directory: unknown, id: string) {
   switch (category) {
-    case 'pages': return contentAdapters.pages.findBySource(directory as Parameters<typeof contentAdapters.pages.findBySource>[0], source)
-    case 'talks': return contentAdapters.talks.findBySource(directory as Parameters<typeof contentAdapters.talks.findBySource>[0], source)
-    case 'infra': return contentAdapters.infra.findBySource(directory as Parameters<typeof contentAdapters.infra.findBySource>[0], source)
+    case 'pages': return contentAdapters.pages.findById(directory as Parameters<typeof contentAdapters.pages.findById>[0], id)
+    case 'talks': return contentAdapters.talks.findById(directory as Parameters<typeof contentAdapters.talks.findById>[0], id)
+    case 'infra': return contentAdapters.infra.findById(directory as Parameters<typeof contentAdapters.infra.findById>[0], id)
   }
 }
 
@@ -52,7 +52,17 @@ export function registerSearchContentTool(server: McpServer, env: Env) {
       const instanceIds = categories.map(item => contentAdapters[item].instanceId)
       const searchStartedAt = performance.now()
       const [search, directories] = await Promise.allSettled([
-        env.AI_SEARCH.search({ query, ai_search_options: { instance_ids: instanceIds, retrieval: { max_num_results: 20 } } }),
+        env.AI_SEARCH.search({ query, ai_search_options: {
+          instance_ids: instanceIds,
+          retrieval: {
+            max_num_results: 20,
+            match_threshold: 0.6,
+          },
+          reranking: {
+            enabled: true,
+            model: '@cf/baai/bge-reranker-base',
+          },
+        } }),
         Promise.allSettled(categories.map(async item => [item, await loadDirectory(env, item)] as const)),
       ])
 
@@ -113,7 +123,11 @@ export function registerSearchContentTool(server: McpServer, env: Env) {
         if (!hitCategory || !directoryMap.has(hitCategory))
           continue
 
-        const entry = findFromSource(hitCategory, directoryMap.get(hitCategory), chunk.item.key)
+        const id = chunk.item.metadata?.id
+        if (typeof id !== 'string')
+          continue
+
+        const entry = findFromId(hitCategory, directoryMap.get(hitCategory), id)
         if (!entry)
           continue
 

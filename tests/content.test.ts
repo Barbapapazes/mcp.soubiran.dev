@@ -88,10 +88,10 @@ describe('content adapters', () => {
     expect(talkTopics(talks)).toEqual(['TypeScript', 'Workers'])
   })
 
-  it('resolves stable metadata from source URLs and canonical document URLs', async () => {
-    expect(pagesAdapter.findBySource(pages, page.url)).toEqual(page)
-    expect(talksAdapter.findBySource(talks, talk.links.transcript)).toEqual(talk)
-    expect(infraAdapter.findBySource(infraCatalog, infra.url)).toEqual(infra)
+  it('resolves entries by their stable IDs', async () => {
+    expect(pagesAdapter.findById(pages, page.id)).toEqual(page)
+    expect(talksAdapter.findById(talks, talk.id)).toEqual(talk)
+    expect(infraAdapter.findById(infraCatalog, infra.id)).toEqual(infra)
     await expect(talksAdapter.retrieve({ ...talk, links: { ...talk.links, transcript: undefined } })).rejects.toMatchObject({ message: expect.stringContaining('No transcript') })
   })
 

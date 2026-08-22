@@ -15,7 +15,6 @@ export interface ContentAdapter<Directory, Entry> {
   load: (baseUrl: string) => Promise<Directory>
   entries: (directory: Directory) => readonly Entry[]
   findById: (directory: Directory, id: string) => Entry | undefined
-  findBySource: (directory: Directory, source: string) => Entry | undefined
   format: (entry: Entry) => ContentMetadata
   retrieve: (entry: Entry) => Promise<string>
 }

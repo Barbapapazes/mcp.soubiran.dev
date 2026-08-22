@@ -60,17 +60,6 @@ export const talksAdapter: ContentAdapter<TalksCatalog, Talk> = {
   },
   entries: catalog => catalog.data,
   findById: (catalog, id) => catalog.data.find(talk => talk.id === id),
-  findBySource(catalog, source) {
-    return catalog.data.find((talk) => {
-      try {
-        const normalized = new URL(source).toString()
-        return talk.url === normalized || Object.values(talk.links).includes(normalized)
-      }
-      catch {
-        return false
-      }
-    })
-  },
   format: talk => ({
     id: talk.id,
     title: talk.title,
