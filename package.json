@@ -1,7 +1,7 @@
 {
   "name": "mcp.soubiran.dev",
   "private": true,
-  "packageManager": "pnpm@10.34.5",
+  "packageManager": "pnpm@11.24.0",
   "scripts": {
     "deploy": "wrangler deploy",
     "dev": "wrangler dev",
@@ -16,18 +16,18 @@
     "@sentry/cloudflare": "^10.68.0",
     "acorn": "^8.15.0",
     "agents": "^0.19.0",
-    "better-result": "^2.10.0",
+    "better-result": "^3.0.1",
     "evlog": "^2.22.4",
     "ofetch": "^1.5.1",
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@antfu/eslint-config": "^5.4.1",
+    "@antfu/eslint-config": "^9.3.0",
     "@types/node": "^24.13.3",
-    "eslint": "^9.39.5",
-    "miniflare": "^3.20250718.3",
-    "taze": "^19.16.0",
-    "typescript": "^5.9.3",
+    "eslint": "^10.9.1",
+    "miniflare": "^4.20260730.0",
+    "taze": "^21.1.0",
+    "typescript": "^7.0.2",
     "vitest": "^4.1.10",
     "wrangler": "^4.114.0"
   }
