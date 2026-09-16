@@ -130,7 +130,7 @@ export function registerListContentTool(server: McpServer, env: Env, topics: rea
       }
       catch (error) {
         Sentry.captureException(error)
-        recordTool(log, 'list_content', startedAt, 'upstream_error', { errorCode: 'CONTENT_DIRECTORY_RETRIEVAL_FAILED' })
+        recordTool(log, 'list_content', startedAt, 'upstream_error', { errorCode: 'CONTENT_DIRECTORY_RETRIEVAL_FAILED' }, error)
         return errorResult('Unable to retrieve the content directories.')
       }
 
@@ -146,13 +146,13 @@ export function registerListContentTool(server: McpServer, env: Env, topics: rea
       }
       catch (error) {
         if (ContentCodeExecutionError.is(error)) {
-          recordTool(log, 'list_content', startedAt, 'client_error', { input: { codeLength: code.length }, errorCode: 'CONTENT_CODE_EXECUTION_FAILED' })
+          recordTool(log, 'list_content', startedAt, 'client_error', { input: { codeLength: code.length }, errorCode: 'CONTENT_CODE_EXECUTION_FAILED' }, error)
           return errorResult(error.message)
         }
 
         Sentry.captureException(error)
         const executorError = ContentCodeExecutorError.is(error) ? error : new ContentCodeExecutorError({ cause: error })
-        recordTool(log, 'list_content', startedAt, 'upstream_error', { input: { codeLength: code.length }, errorCode: 'CONTENT_CODE_EXECUTOR_FAILED' })
+        recordTool(log, 'list_content', startedAt, 'upstream_error', { input: { codeLength: code.length }, errorCode: 'CONTENT_CODE_EXECUTOR_FAILED' }, executorError)
         return errorResult(`Unable to execute code against the content directories: ${executorError.message}`)
       }
     },

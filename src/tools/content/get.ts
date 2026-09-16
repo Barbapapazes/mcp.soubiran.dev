@@ -31,7 +31,7 @@ export function registerGetContentTool(server: McpServer, env: Env) {
       }
       catch (error) {
         Sentry.captureException(error)
-        recordTool(log, 'get_content', startedAt, 'upstream_error', { errorCode: 'CONTENT_DIRECTORY_RETRIEVAL_FAILED' })
+        recordTool(log, 'get_content', startedAt, 'upstream_error', { errorCode: 'CONTENT_DIRECTORY_RETRIEVAL_FAILED' }, error)
         return errorResult('Unable to retrieve the content directories.')
       }
 
@@ -43,14 +43,14 @@ export function registerGetContentTool(server: McpServer, env: Env) {
 
       if (matches.length === 0) {
         const error = new ContentNotFoundError({ id })
-        recordTool(log, 'get_content', startedAt, 'client_error', { errorCode: 'CONTENT_NOT_FOUND' })
+        recordTool(log, 'get_content', startedAt, 'client_error', { errorCode: 'CONTENT_NOT_FOUND' }, error)
         return errorResult(error.message)
       }
 
       if (matches.length > 1) {
         const error = new ContentDirectoryContractError({ message: `Content ID "${id}" appears in multiple directories.` })
         Sentry.captureException(error)
-        recordTool(log, 'get_content', startedAt, 'upstream_error', { errorCode: 'DUPLICATE_CONTENT_ID' })
+        recordTool(log, 'get_content', startedAt, 'upstream_error', { errorCode: 'DUPLICATE_CONTENT_ID' }, error)
         return errorResult('The content directories contain a duplicate ID and cannot be resolved safely.')
       }
 
@@ -65,12 +65,12 @@ export function registerGetContentTool(server: McpServer, env: Env) {
       }
       catch (error) {
         if (ContentUnavailableError.is(error)) {
-          recordTool(log, 'get_content', startedAt, 'client_error', { source: { category: match.adapter.category }, errorCode: 'CONTENT_UNAVAILABLE' })
+          recordTool(log, 'get_content', startedAt, 'client_error', { source: { category: match.adapter.category }, errorCode: 'CONTENT_UNAVAILABLE' }, error)
           return errorResult(error.message)
         }
 
         Sentry.captureException(error)
-        recordTool(log, 'get_content', startedAt, 'upstream_error', { source: { category: match.adapter.category }, errorCode: 'CONTENT_RETRIEVAL_FAILED' })
+        recordTool(log, 'get_content', startedAt, 'upstream_error', { source: { category: match.adapter.category }, errorCode: 'CONTENT_RETRIEVAL_FAILED' }, error)
         return errorResult(`Unable to retrieve the ${match.adapter.category} content.`)
       }
     },
