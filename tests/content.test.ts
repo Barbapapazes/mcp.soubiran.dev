@@ -1,4 +1,6 @@
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { registerContentTools } from '../src/tools/content'
 import { categoriesByInstanceId, contentAdapters } from '../src/tools/content/adapters'
 import { infraAdapter, infraCatalogSchema } from '../src/tools/content/adapters/infra'
 import { pagesAdapter, pagesCatalogSchema, pageSchema } from '../src/tools/content/adapters/pages'
@@ -6,6 +8,8 @@ import { talksAdapter, talksCatalogSchema, talkTopics } from '../src/tools/conte
 import { executeContentCode } from '../src/tools/content/code-mode'
 import { ContentCodeExecutionError } from '../src/tools/content/errors'
 import { listContentDescription } from '../src/tools/content/list'
+
+vi.mock('@sentry/cloudflare', () => ({ captureException: vi.fn() }))
 
 const page = {
   id: 'page-1',
@@ -153,5 +157,88 @@ describe('content code mode', () => {
     expect(description).toContain('Current talk topics: TypeScript, Workers.')
     expect(description).toContain('const allContent')
     expect(description).toContain('const ecosystemNodes')
+  })
+})
+
+describe('content tool registration', () => {
+  function fakeServer() {
+    const descriptions: Record<string, string> = {}
+    const server = {
+      registerTool: (name: string, config: { description: string }) => {
+        descriptions[name] = config.description
+      },
+    } as unknown as McpServer
+    return { server, descriptions }
+  }
+
+  function contentEnv(talksUrl: string): Env {
+    return {
+      TALKS_BASE_URL: talksUrl,
+      PAGES_BASE_URL: 'https://soubiran.dev/pages.json',
+      INFRA_BASE_URL: 'https://infra.soubiran.dev/pages.json',
+    } as unknown as Env
+  }
+
+  function catalogResponse(status: number, body?: unknown) {
+    return new Response(body === undefined ? null : JSON.stringify(body), {
+      status,
+      headers: { 'content-type': 'application/json' },
+    })
+  }
+
+  it('registers tools with empty topics when the talks catalog is unavailable', async () => {
+    const { server, descriptions } = fakeServer()
+    const talksUrl = 'https://unavailable.test/talks.json'
+    vi.stubGlobal('fetch', async (input: string | URL | Request) => {
+      const url = typeof input === 'string' ? input : input.toString()
+      return url === talksUrl ? catalogResponse(404) : catalogResponse(200)
+    })
+
+    await expect(registerContentTools(server, contentEnv(talksUrl))).resolves.toBeUndefined()
+    expect(descriptions.list_content).toContain('Current talk topics: none.')
+    expect(descriptions.get_content).toBeDefined()
+    expect(descriptions.search_content).toBeDefined()
+  })
+
+  it('retries a failed talks catalog load on the next registration instead of pinning it', async () => {
+    const talksUrl = 'https://retry.test/talks.json'
+    let talksRequests = 0
+    vi.stubGlobal('fetch', async (input: string | URL | Request) => {
+      const url = typeof input === 'string' ? input : input.toString()
+      if (url === talksUrl) {
+        talksRequests += 1
+        return talksRequests === 1 ? catalogResponse(404) : catalogResponse(200, talks)
+      }
+      return catalogResponse(200)
+    })
+
+    const first = fakeServer()
+    await registerContentTools(first.server, contentEnv(talksUrl))
+    expect(first.descriptions.list_content).toContain('Current talk topics: none.')
+
+    const second = fakeServer()
+    await registerContentTools(second.server, contentEnv(talksUrl))
+    expect(second.descriptions.list_content).toContain('Current talk topics: TypeScript, Workers.')
+    expect(talksRequests).toBe(2)
+  })
+
+  it('caches a successful talks catalog load across registrations', async () => {
+    const talksUrl = 'https://cached.test/talks.json'
+    let talksRequests = 0
+    vi.stubGlobal('fetch', async (input: string | URL | Request) => {
+      const url = typeof input === 'string' ? input : input.toString()
+      if (url === talksUrl) {
+        talksRequests += 1
+        return catalogResponse(200, talks)
+      }
+      return catalogResponse(200)
+    })
+
+    const first = fakeServer()
+    await registerContentTools(first.server, contentEnv(talksUrl))
+    const second = fakeServer()
+    await registerContentTools(second.server, contentEnv(talksUrl))
+    expect(second.descriptions.list_content).toContain('Current talk topics: TypeScript, Workers.')
+    expect(talksRequests).toBe(1)
   })
 })
