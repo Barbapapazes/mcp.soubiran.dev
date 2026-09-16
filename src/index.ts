@@ -2,6 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import * as Sentry from '@sentry/cloudflare'
 import { createMcpHandler } from 'agents/mcp'
 import { createWorkersLogger } from 'evlog/workers'
+import { shapeError } from './telemetry'
 import { registerContentTools } from './tools/content'
 
 async function createServer(env: Env) {
@@ -39,8 +40,7 @@ export default Sentry.withSentry(
       catch (error) {
         Sentry.captureException(error)
         log.setLevel('error')
-        log.set({ mcp: { outcome: 'internal_error', errorCode: 'MCP_HANDLER_FAILED' } })
-        log.emit()
+        log.set({ mcp: { outcome: 'internal_error', errorCode: 'MCP_HANDLER_FAILED', error: shapeError(error) } })
         response = new Response('Internal Server Error', { status: 500 })
       }
 

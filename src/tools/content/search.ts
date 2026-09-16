@@ -69,7 +69,7 @@ export function registerSearchContentTool(server: McpServer, env: Env) {
       if (search.status === 'rejected') {
         const error = new ContentSearchError({ cause: search.reason })
         Sentry.captureException(error)
-        recordTool(log, 'search_content', startedAt, 'upstream_error', { errorCode: 'CONTENT_SEARCH_FAILED' })
+        recordTool(log, 'search_content', startedAt, 'upstream_error', { errorCode: 'CONTENT_SEARCH_FAILED' }, error)
         return errorResult(`Unable to search content: ${error.message}`)
       }
 
@@ -89,7 +89,7 @@ export function registerSearchContentTool(server: McpServer, env: Env) {
             : new ContentDirectoryError({ category: failedCategory, cause: directory.reason })
           if (category) {
             Sentry.captureException(error)
-            recordTool(log, 'search_content', startedAt, 'upstream_error', { errorCode: 'CONTENT_DIRECTORY_RETRIEVAL_FAILED' })
+            recordTool(log, 'search_content', startedAt, 'upstream_error', { errorCode: 'CONTENT_DIRECTORY_RETRIEVAL_FAILED' }, error)
             return errorResult(`Unable to retrieve the ${failedCategory} directory: ${error.message}`)
           }
           Sentry.captureException(error)
@@ -99,7 +99,7 @@ export function registerSearchContentTool(server: McpServer, env: Env) {
       else if (category) {
         const error = directories.reason instanceof ContentDirectoryError ? directories.reason : new ContentDirectoryError({ category, cause: directories.reason })
         Sentry.captureException(error)
-        recordTool(log, 'search_content', startedAt, 'upstream_error', { errorCode: 'CONTENT_DIRECTORY_RETRIEVAL_FAILED' })
+        recordTool(log, 'search_content', startedAt, 'upstream_error', { errorCode: 'CONTENT_DIRECTORY_RETRIEVAL_FAILED' }, error)
         return errorResult(`Unable to retrieve the ${category} directory: ${error.message}`)
       }
       else {
@@ -111,7 +111,7 @@ export function registerSearchContentTool(server: McpServer, env: Env) {
         const failedCategory = categoriesByInstanceId.get(error.instance_id)
         const message = failedCategory ? `Search failed for ${failedCategory}: ${error.message}` : `Search failed for unknown instance ${error.instance_id}: ${error.message}`
         if (category) {
-          recordTool(log, 'search_content', startedAt, 'upstream_error', { errorCode: 'CONTENT_SEARCH_INSTANCE_FAILED' })
+          recordTool(log, 'search_content', startedAt, 'upstream_error', { errorCode: 'CONTENT_SEARCH_INSTANCE_FAILED', instanceId: error.instance_id }, error)
           return errorResult(message)
         }
         warnings.push(message)
