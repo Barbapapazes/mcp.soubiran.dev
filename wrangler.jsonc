@@ -8,7 +8,7 @@
   ],
   "vars": {
     "PAGES_BASE_URL": "https://soubiran.dev/pages.json",
-    "TALKS_BASE_URL": "https://talks.soubiran.dev/talks.json",
+    "TALKS_BASE_URL": "https://talks.soubiran.dev/meta.json",
     "INFRA_BASE_URL": "https://infra.soubiran.dev/pages.json"
   },
   "ai_search_namespaces": [

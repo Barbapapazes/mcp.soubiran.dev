@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { categoriesByInstanceId, contentAdapters } from '../src/tools/content/adapters'
 import { infraAdapter, infraCatalogSchema } from '../src/tools/content/adapters/infra'
 import { pagesAdapter, pagesCatalogSchema, pageSchema } from '../src/tools/content/adapters/pages'
-import { talksAdapter, talksCatalogSchema, talkTopics } from '../src/tools/content/adapters/talks'
+import { talksAdapter, talksCatalogSchema, talkSchema, talkTopics } from '../src/tools/content/adapters/talks'
 import { executeContentCode } from '../src/tools/content/code-mode'
 import { ContentCodeExecutionError } from '../src/tools/content/errors'
 import { listContentDescription } from '../src/tools/content/list'
@@ -18,15 +18,22 @@ const page = {
   date: '2026-01-01',
 }
 const talk = {
-  id: 'talk-1',
-  type: 'talk' as const,
-  title: 'Talk',
+  prefix: '2026-01-01/event',
+  name: 'Talk',
+  description: 'A talk',
   date: '2026-01-01',
-  url: 'https://talks.soubiran.dev/talk-1',
+  url: 'https://talks.soubiran.dev/2026-01-01/event',
   language: 'en',
   topics: ['Workers', 'TypeScript', 'Workers'],
-  event: { name: 'Event', url: 'https://event.example', location: { city: 'Lille', country: 'France' } },
-  links: { slides: 'https://example.com/slides', source: 'https://example.com/source', pdf: 'https://example.com/talk.pdf', transcript: 'https://example.com/transcript.md' },
+  event: 'Event',
+  event_url: 'https://event.example',
+  folder: '2026-01-01',
+  location: { city: 'Lille', country: 'France', latitude: 50.63, longitude: 3.06 },
+  thumbnail_url: 'https://talks.soubiran.dev/2026-01-01/event/thumbnail.png',
+  thumbnail_dark_url: 'https://talks.soubiran.dev/2026-01-01/event/thumbnail-dark.png',
+  pdf_url: 'https://talks.soubiran.dev/2026-01-01/event/pdf',
+  github_url: 'https://talks.soubiran.dev/2026-01-01/event/src',
+  transcript_url: 'https://soubiran.dev/talks/2026-01-01/event',
 }
 const infra = {
   id: 'infra-1',
@@ -43,10 +50,8 @@ const pages = {
   data: [page],
 }
 const talks = {
-  schemaVersion: '1.0',
-  generatedAt: '2026-01-01T00:00:00.000Z',
-  site: { id: 'talks.soubiran.dev', url: 'https://talks.soubiran.dev' },
   data: [talk],
+  statistics: { totalTalks: 1 },
 }
 const infraCatalog = {
   schemaVersion: '1.0',
@@ -79,6 +84,8 @@ describe('content adapters', () => {
   it('strictly validates source catalogs while preserving recursive infra data', () => {
     expect(pageSchema.parse(page)).toEqual(page)
     expect(pageSchema.safeParse({ ...page, unexpected: true }).success).toBe(false)
+    expect(talkSchema.parse(talk)).toEqual(talk)
+    expect(talkSchema.safeParse({ ...talk, unexpected: true }).success).toBe(false)
     expect(pagesCatalogSchema.parse(pages).data[0]?.type).toBe('post')
     expect(talksCatalogSchema.parse(talks).data[0]?.topics).toEqual(['Workers', 'TypeScript', 'Workers'])
     expect(infraCatalogSchema.parse(infraCatalog).data[0]?.ecosystem?.[0]?.ecosystem?.[0]?.name).toBe('mcp.soubiran.dev')
@@ -88,11 +95,18 @@ describe('content adapters', () => {
     expect(talkTopics(talks)).toEqual(['TypeScript', 'Workers'])
   })
 
+  it('keeps the producer statistics block next to the talks entries', () => {
+    const parsed = talksCatalogSchema.parse(talks)
+
+    expect(parsed.data).toHaveLength(1)
+    expect(parsed.statistics).toEqual({ totalTalks: 1 })
+  })
+
   it('resolves entries by their stable IDs', async () => {
     expect(pagesAdapter.findById(pages, page.id)).toEqual(page)
-    expect(talksAdapter.findById(talks, talk.id)).toEqual(talk)
+    expect(talksAdapter.findById(talks, talk.prefix)).toEqual(talk)
     expect(infraAdapter.findById(infraCatalog, infra.id)).toEqual(infra)
-    await expect(talksAdapter.retrieve({ ...talk, links: { ...talk.links, transcript: undefined } })).rejects.toMatchObject({ message: expect.stringContaining('No transcript') })
+    await expect(talksAdapter.retrieve({ ...talk, transcript_url: undefined })).rejects.toMatchObject({ message: expect.stringContaining('No transcript') })
   })
 
   it('retrieves Markdown documents from their published URLs', async () => {
@@ -113,7 +127,7 @@ describe('content adapters', () => {
       'https://soubiran.dev/index.md',
       'https://infra.soubiran.dev/infra.md',
       'https://infra.soubiran.dev/index.md',
-      'https://talks.soubiran.dev/talk-1/transcript.en.md',
+      'https://talks.soubiran.dev/2026-01-01/event/transcript.en.md',
     ])
   })
 
@@ -148,7 +162,8 @@ describe('content code mode', () => {
     const description = listContentDescription(['TypeScript', 'Workers'])
 
     expect(description).toContain('type PagesCatalog = Catalog<Page>')
-    expect(description).toContain('type TalksCatalog = Catalog<Talk>')
+    expect(description).toContain('type TalksCatalog = { data: Talk[], statistics: Record<string, unknown> }')
+    expect(description).toContain('prefix: string // stable talk ID, use with get_content')
     expect(description).toContain('type EcosystemNode')
     expect(description).toContain('Current talk topics: TypeScript, Workers.')
     expect(description).toContain('const allContent')
