@@ -27,16 +27,25 @@ type Page = {
 }
 
 type Talk = {
-  id: string
-  type: "talk"
-  title: string
+  prefix: string // stable talk ID, use with get_content
+  name: string
   description?: string
   date: string // ISO date
-  url: string
   language: string
   topics: string[]
-  event: { name: string, url: string, location: { city: string, country: string } }
-  links: { slides: string, source: string, pdf: string, recording?: string, audio?: string, transcript?: string, article?: string }
+  event: string
+  event_url: string
+  url: string
+  folder: string
+  location: { city: string, country: string, latitude: number, longitude: number }
+  thumbnail_url: string
+  thumbnail_dark_url: string
+  pdf_url: string
+  github_url: string
+  recording_url?: string
+  audio_url?: string
+  transcript_url?: string
+  article_url?: string
 }
 
 type Catalog<T> = {
@@ -47,7 +56,7 @@ type Catalog<T> = {
 }
 
 type PagesCatalog = Catalog<Page>
-type TalksCatalog = Catalog<Talk>
+type TalksCatalog = { data: Talk[], statistics: Record<string, unknown> }
 
 type EcosystemNode = {
   type: string
@@ -95,7 +104,7 @@ const betweenDates = (items, from, to) => items.filter(item => item.date >= from
 const ecosystemNodes = nodes => nodes.flatMap(node => [node, ...ecosystemNodes(node.ecosystem ?? [])])
 
 Examples:
-- Recent content titles: \`async () => newestFirst([...pages.data, ...talks.data]).slice(0, 10).map(({ id, title, date }) => ({ id, title, date }))\`
+- Recent talks: \`async () => newestFirst(talks.data).slice(0, 10).map(({ prefix, name, date }) => ({ id: prefix, title: name, date }))\`
 - Talks about a topic: \`async () => talks.data.filter(talk => talk.topics.includes('TypeScript'))\`
 - Infra relationships: \`async () => infra.data.flatMap(page => ecosystemNodes(page.ecosystem ?? []).map(node => ({ page: page.title, ...node })))\`
 `
