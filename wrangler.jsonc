@@ -6,6 +6,7 @@
   "compatibility_flags": [
     "nodejs_compat"
   ],
+  "preview_urls": false,
   "vars": {
     "PAGES_BASE_URL": "https://soubiran.dev/pages.json",
     "TALKS_BASE_URL": "https://talks.soubiran.dev/talks.json",
