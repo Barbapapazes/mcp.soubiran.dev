@@ -118,8 +118,8 @@ describe('content adapters', () => {
   })
 
   it('maps each configured search instance to exactly one content category', () => {
-    expect(Object.values(contentAdapters).map(adapter => adapter.instanceId)).toEqual(['soubiran-dev', 'talks', 'infra-soubiran-dev'])
-    expect(categoriesByInstanceId.get('infra-soubiran-dev')).toBe('infra')
+    expect(Object.values(contentAdapters).map(adapter => adapter.instanceId)).toEqual(['soubiran-dev', 'talks', 'infra'])
+    expect(categoriesByInstanceId.get('infra')).toBe('infra')
   })
 })
 
