@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { categoriesByInstanceId, contentAdapters } from '../src/tools/content/adapters'
 import { infraAdapter, infraCatalogSchema } from '../src/tools/content/adapters/infra'
+import { CONTENT_DIRECTORY_TIMEOUT_MS } from '../src/tools/content/adapters/load'
 import { pagesAdapter, pagesCatalogSchema, pageSchema } from '../src/tools/content/adapters/pages'
 import { talksAdapter, talksCatalogSchema, talkTopics } from '../src/tools/content/adapters/talks'
 import { executeContentCode } from '../src/tools/content/code-mode'
-import { ContentCodeExecutionError } from '../src/tools/content/errors'
+import { ContentCodeExecutionError, ContentDirectoryError } from '../src/tools/content/errors'
 import { listContentDescription } from '../src/tools/content/list'
 
 const page = {
@@ -153,5 +154,71 @@ describe('content code mode', () => {
     expect(description).toContain('Current talk topics: TypeScript, Workers.')
     expect(description).toContain('const allContent')
     expect(description).toContain('const ecosystemNodes')
+  })
+})
+
+describe('content directory failures', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.useRealTimers()
+  })
+
+  it('reports the producer HTTP status when the catalog is missing', async () => {
+    vi.stubGlobal('fetch', async () => new Response('Not Found', { status: 404, statusText: 'Not Found' }))
+
+    const error = await talksAdapter.load('https://talks.soubiran.dev/talks.json').catch(error => error)
+
+    expect(error).toBeInstanceOf(ContentDirectoryError)
+    expect(error.message).toBe('The talks directory request to https://talks.soubiran.dev/talks.json failed with HTTP 404 (Not Found).')
+  })
+
+  it('separates a schema mismatch from a transport failure', async () => {
+    vi.stubGlobal('fetch', async () => new Response(JSON.stringify({ data: [] }), { headers: { 'content-type': 'application/json' } }))
+
+    const error = await talksAdapter.load('https://talks.soubiran.dev/meta.json').catch(error => error)
+
+    expect(error).toBeInstanceOf(ContentDirectoryError)
+    expect(error.message).toContain('succeeded but the payload does not match the expected catalog schema')
+    expect(error.message).toContain('schemaVersion')
+    expect(error.message).not.toContain('HTTP')
+  })
+
+  it('bounds a producer that never responds and reports the timeout', async () => {
+    vi.useFakeTimers()
+    vi.stubGlobal('fetch', (_input: RequestInfo | URL, init?: RequestInit) => new Promise<Response>((_resolve, reject) => {
+      const signal = init?.signal
+      if (!signal)
+        throw new Error('expected the directory request to be bounded by a timeout signal')
+
+      const abort = () => reject(signal.reason)
+      if (signal.aborted)
+        abort()
+      else
+        signal.addEventListener('abort', abort)
+    }))
+
+    const loading = talksAdapter.load('https://talks.soubiran.dev/talks.json')
+    const assertion = expect(loading).rejects.toMatchObject({ message: `The talks directory request to https://talks.soubiran.dev/talks.json timed out after ${CONTENT_DIRECTORY_TIMEOUT_MS}ms.` })
+
+    for (let attempt = 0; attempt < 3; attempt++)
+      await vi.advanceTimersByTimeAsync(CONTENT_DIRECTORY_TIMEOUT_MS)
+
+    await assertion
+  })
+
+  it('applies the bounded request to every directory adapter', async () => {
+    const signals: (AbortSignal | undefined)[] = []
+    const responses = [pages, talks, infraCatalog]
+    let index = 0
+    vi.stubGlobal('fetch', async (_input: RequestInfo | URL, init?: RequestInit) => {
+      signals.push(init?.signal ?? undefined)
+      return new Response(JSON.stringify(responses[index++]), { headers: { 'content-type': 'application/json' } })
+    })
+
+    await expect(pagesAdapter.load('https://soubiran.dev/pages.json')).resolves.toEqual(pages)
+    await expect(talksAdapter.load('https://talks.soubiran.dev/talks.json')).resolves.toEqual(talks)
+    await expect(infraAdapter.load('https://infra.soubiran.dev/pages.json')).resolves.toEqual(infraCatalog)
+
+    expect(signals).toEqual([expect.any(AbortSignal), expect.any(AbortSignal), expect.any(AbortSignal)])
   })
 })

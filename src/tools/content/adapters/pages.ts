@@ -1,7 +1,8 @@
 import type { ContentAdapter } from '../types'
 import { ofetch } from 'ofetch'
 import { z } from 'zod'
-import { ContentDirectoryError, ContentRetrievalError } from '../errors'
+import { ContentRetrievalError } from '../errors'
+import { loadDirectory } from './load'
 
 const translationSchema = z.object({
   id: z.string().min(1),
@@ -54,12 +55,7 @@ export const pagesAdapter: ContentAdapter<PagesCatalog, Page> = {
   category: 'pages',
   instanceId: 'soubiran-dev',
   async load(baseUrl) {
-    try {
-      return pagesCatalogSchema.parse(await ofetch(baseUrl, { headers: { Accept: 'application/json' } }))
-    }
-    catch (cause) {
-      throw new ContentDirectoryError({ category: 'pages', cause, message: 'The pages directory returned an unexpected response.' })
-    }
+    return loadDirectory('pages', baseUrl, pagesCatalogSchema)
   },
   entries: catalog => catalog.data,
   findById: (catalog, id) => catalog.data.find(entry => entry.id === id),
