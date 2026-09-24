@@ -1,7 +1,8 @@
 import type { ContentAdapter } from '../types'
 import { ofetch } from 'ofetch'
 import { z } from 'zod'
-import { ContentDirectoryError, ContentRetrievalError } from '../errors'
+import { ContentRetrievalError } from '../errors'
+import { loadDirectory } from './load'
 
 export interface EcosystemNode {
   type: string
@@ -53,12 +54,7 @@ export const infraAdapter: ContentAdapter<InfraCatalog, InfraPage> = {
   category: 'infra',
   instanceId: 'infra',
   async load(baseUrl) {
-    try {
-      return infraCatalogSchema.parse(await ofetch(baseUrl, { headers: { Accept: 'application/json' } }))
-    }
-    catch (cause) {
-      throw new ContentDirectoryError({ category: 'infra', cause, message: 'The infra directory returned an unexpected response.' })
-    }
+    return loadDirectory('infra', baseUrl, infraCatalogSchema)
   },
   entries: catalog => catalog.data,
   findById: (catalog, id) => catalog.data.find(page => page.id === id),

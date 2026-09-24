@@ -1,7 +1,8 @@
 import type { ContentAdapter } from '../types'
 import { ofetch } from 'ofetch'
 import { z } from 'zod'
-import { ContentDirectoryError, ContentRetrievalError, ContentUnavailableError } from '../errors'
+import { ContentRetrievalError, ContentUnavailableError } from '../errors'
+import { loadDirectory } from './load'
 
 const talkSchema = z.object({
   id: z.string().min(1),
@@ -51,12 +52,7 @@ export const talksAdapter: ContentAdapter<TalksCatalog, Talk> = {
   category: 'talks',
   instanceId: 'talks',
   async load(baseUrl) {
-    try {
-      return talksCatalogSchema.parse(await ofetch(baseUrl, { headers: { Accept: 'application/json' } }))
-    }
-    catch (cause) {
-      throw new ContentDirectoryError({ category: 'talks', cause, message: 'The talks directory returned an unexpected response.' })
-    }
+    return loadDirectory('talks', baseUrl, talksCatalogSchema)
   },
   entries: catalog => catalog.data,
   findById: (catalog, id) => catalog.data.find(talk => talk.id === id),
