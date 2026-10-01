@@ -20,9 +20,6 @@ importers:
       agents:
         specifier: ^0.19.0
         version: 0.19.0(@babel/core@8.0.1)(@babel/runtime@7.29.7)(react@18.3.1)(rolldown@1.2.4)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.1)(jiti@2.6.1)(yaml@2.9.0))(zod@4.4.3)
-      better-result:
-        specifier: ^2.10.0
-        version: 2.10.0
       evlog:
         specifier: ^2.22.4
         version: 2.24.0(express@5.2.1)(hono@4.12.32)(ofetch@1.5.1)(react@18.3.1)(vite@8.2.1(@types/node@24.13.3)(esbuild@0.28.1)(jiti@2.6.1)(yaml@2.9.0))
@@ -1269,9 +1266,6 @@ packages:
   baseline-browser-mapping@2.8.10:
     resolution: {integrity: sha512-uLfgBi+7IBNay8ECBO2mVMGZAc1VgZWEChxm4lv+TobGdG82LnXMjuNGo/BSSZZL4UmkWhxEHP2f5ziLNwGWMA==}
     hasBin: true
-
-  better-result@2.10.0:
-    resolution: {integrity: sha512-oQhh0y1qo2/ZKdAAEvHZAqKKiHOFU5k/bW96fE2ScgQOVkJRiHwB+nOS1SgFsYqRlxMDWvefXi9Q3px7QvgNDw==}
 
   blake3-wasm@2.1.5:
     resolution: {integrity: sha512-F1+K8EbfOZE49dtoPtmxUQrpXaBIl3ICvasLh+nJta0xkz+9kF/7uet9fLnwKqhDrmj6g+6K3Tw9yQPUg2ka5g==}
@@ -4268,8 +4262,6 @@ snapshots:
   baseline-browser-mapping@2.11.1: {}
 
   baseline-browser-mapping@2.8.10: {}
-
-  better-result@2.10.0: {}
 
   blake3-wasm@2.1.5: {}
 

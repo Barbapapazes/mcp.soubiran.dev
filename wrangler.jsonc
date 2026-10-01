@@ -7,9 +7,9 @@
     "nodejs_compat"
   ],
   "vars": {
-    "PAGES_BASE_URL": "https://soubiran.dev/pages.json",
-    "TALKS_BASE_URL": "https://talks.soubiran.dev/talks.json",
-    "INFRA_BASE_URL": "https://infra.soubiran.dev/pages.json"
+    "PAGES_EN_URL": "https://beta.soubiran.dev/pages.en.json",
+    "PAGES_FR_URL": "https://beta.soubiran.dev/pages.fr.json",
+    "CORS_ALLOWED_ORIGIN": "http://localhost:3000"
   },
   "ai_search_namespaces": [
     {

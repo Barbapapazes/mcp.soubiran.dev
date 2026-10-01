@@ -7,31 +7,22 @@ interface ContentCodeExecutorEntrypoint {
   evaluate: () => Promise<{ error?: string, resultJson?: string }>
 }
 
-interface ContentDirectories {
-  pages: unknown
-  talks: unknown
-  infra: unknown
-}
-
 function validateCode(code: string) {
+  let program
   try {
-    const program = parse(code, { ecmaVersion: 'latest', sourceType: 'script' })
-    const statement = program.body[0]
-    if (program.body.length !== 1 || statement?.type !== 'ExpressionStatement' || statement.expression.type !== 'ArrowFunctionExpression' || !statement.expression.async) {
-      throw new Error('Code must be a single async JavaScript arrow function.')
-    }
+    program = parse(code, { ecmaVersion: 'latest', sourceType: 'script' })
   }
   catch (cause) {
-    throw new ContentCodeExecutionError({
-      cause,
-      message: cause instanceof Error && cause.message === 'Code must be a single async JavaScript arrow function.'
-        ? cause.message
-        : 'Code must be a valid async JavaScript arrow function.',
-    })
+    throw new ContentCodeExecutionError({ cause, message: 'Code must be a valid async JavaScript arrow function.' })
+  }
+
+  const statement = program.body[0]
+  if (program.body.length !== 1 || statement?.type !== 'ExpressionStatement' || statement.expression.type !== 'ArrowFunctionExpression' || !statement.expression.async) {
+    throw new ContentCodeExecutionError({ cause: new Error('Code must be a single async JavaScript arrow function.') })
   }
 }
 
-function createWorkerCode(directories: ContentDirectories, code: string) {
+function createWorkerCode(pages: readonly unknown[], code: string) {
   return `
 import { WorkerEntrypoint } from 'cloudflare:workers'
 
@@ -62,9 +53,7 @@ function deepFreeze(value) {
   return Object.freeze(value)
 }
 
-const pages = deepFreeze(${JSON.stringify(directories.pages)})
-const talks = deepFreeze(${JSON.stringify(directories.talks)})
-const infra = deepFreeze(${JSON.stringify(directories.infra)})
+const pages = deepFreeze(${JSON.stringify(pages)})
 const submittedFunction = (
 ${code}
 )
@@ -87,7 +76,7 @@ export default class ContentCodeExecutor extends WorkerEntrypoint {
 `
 }
 
-export async function executeContentCode(loader: WorkerLoader, directories: ContentDirectories, code: string) {
+export async function executeContentCode(loader: WorkerLoader, pages: readonly unknown[], code: string) {
   validateCode(code)
 
   try {
@@ -96,7 +85,7 @@ export async function executeContentCode(loader: WorkerLoader, directories: Cont
       globalOutbound: null,
       limits: { cpuMs: 50, subRequests: 0 },
       mainModule: 'worker.js',
-      modules: { 'worker.js': createWorkerCode(directories, code) },
+      modules: { 'worker.js': createWorkerCode(pages, code) },
     }))
     const entrypoint = worker.getEntrypoint() as unknown as ContentCodeExecutorEntrypoint
     const response = await entrypoint.evaluate()
@@ -119,7 +108,7 @@ export async function executeContentCode(loader: WorkerLoader, directories: Cont
     return response.resultJson
   }
   catch (cause) {
-    if (ContentCodeExecutionError.is(cause))
+    if (cause instanceof ContentCodeExecutionError)
       throw cause
 
     throw new ContentCodeExecutorError({ cause })

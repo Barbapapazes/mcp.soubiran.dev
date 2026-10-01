@@ -3,14 +3,15 @@ import * as Sentry from '@sentry/cloudflare'
 import { createMcpHandler } from 'agents/mcp'
 import { createWorkersLogger } from 'evlog/workers'
 import { registerContentTools } from './tools/content'
+import { SITE_URL } from './utils'
 
-async function createServer(env: Env) {
+function createServer(env: Env) {
   const server = new McpServer({
     name: 'Estéban\'s MCP Server for soubiran.dev',
     version: '1.0.0',
   })
 
-  await registerContentTools(server, env)
+  registerContentTools(server, env)
 
   return server
 }
@@ -30,23 +31,28 @@ export default Sentry.withSentry(
       const log = createWorkersLogger(request, { executionCtx: ctx })
 
       let response: Response
+      let outcome: 'success' | 'http_error' | 'internal_error'
 
       try {
         response = url.pathname === '/mcp'
-          ? await createMcpHandler(await createServer(env), { route: '/mcp' })(request, env, ctx)
-          : Response.redirect('https://soubiran.dev', 302)
+          ? await createMcpHandler(createServer(env), {
+              corsOptions: { origin: env.CORS_ALLOWED_ORIGIN },
+              route: '/mcp',
+            })(request, env, ctx)
+          : Response.redirect(SITE_URL, 302)
+        outcome = response.ok ? 'success' : 'http_error'
       }
       catch (error) {
         Sentry.captureException(error)
         log.setLevel('error')
-        log.set({ mcp: { outcome: 'internal_error', errorCode: 'MCP_HANDLER_FAILED' } })
-        log.emit()
+        log.set({ mcp: { errorCode: 'MCP_HANDLER_FAILED' } })
+        outcome = 'internal_error'
         response = new Response('Internal Server Error', { status: 500 })
       }
 
       log.set({
         request: { durationMs: Math.round(performance.now() - startedAt) },
-        mcp: { route: url.pathname === '/mcp', outcome: response.ok ? 'success' : 'http_error' },
+        mcp: { route: url.pathname === '/mcp', outcome },
       })
       log.emit()
       return response
