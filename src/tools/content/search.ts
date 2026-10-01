@@ -11,7 +11,7 @@ export function registerSearchContentTool(server: McpServer, env: Env) {
   server.registerTool(
     'search_content',
     {
-      description: 'Search all English and French pages semantically. Results are ranked excerpts with page metadata and a stable ID suitable for get_content.',
+      description: 'Discover relevant English and French content by topic or question across titles, descriptions, and body text using Cloudflare AI Search. Results are ranked excerpts with page metadata, a published URL for citations, and a stable ID for get_page. Use get_page to read the full page before summarizing it. Use list_pages for exact metadata filtering, series, or latest-page/date comparisons; search ranking does not establish recency.',
       annotations: { title: 'Search content', readOnlyHint: true, openWorldHint: true },
       inputSchema: {
         query: z.string().trim().min(1).describe('Natural-language topic or question to search.'),

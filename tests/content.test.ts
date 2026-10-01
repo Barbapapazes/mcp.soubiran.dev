@@ -2,9 +2,9 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { executeContentCode } from '../src/tools/content/code-mode'
 import { ContentCodeExecutionError, ContentCodeExecutorError } from '../src/tools/content/errors'
-import { registerGetContentTool } from '../src/tools/content/get'
+import { registerGetPageTool } from '../src/tools/content/get'
 import { registerContentTools } from '../src/tools/content/index'
-import { listContentDescription, registerListContentTool } from '../src/tools/content/list'
+import { listPagesDescription, registerListPagesTool } from '../src/tools/content/list'
 import { loadPages, loadPagesFeed, retrievePage } from '../src/tools/content/pages'
 import { registerSearchContentTool } from '../src/tools/content/search'
 
@@ -90,17 +90,18 @@ describe('unified pages', () => {
     const fetch = mockFeeds()
     const { server, registerTool } = mockServer()
     registerContentTools(server, env)
-    expect(registerTool.mock.calls.map(call => call[0])).toEqual(['list_content', 'get_content', 'search_content'])
+    expect(registerTool.mock.calls.map(call => call[0])).toEqual(['list_pages', 'get_page', 'search_content'])
     expect(fetch).not.toHaveBeenCalled()
   })
 
   it('returns a not-found error for pages not yet published', async () => {
     mockFeeds()
     const { server, registerTool } = mockServer()
-    registerGetContentTool(server, env)
+    registerGetPageTool(server, env)
     const result = await registerTool.mock.calls[0]![2]({ id: 'missing' })
     expect(result.isError).toBe(true)
     expect(result.content[0].text).toContain('No content matches')
+    expect(result.content[0].text).toContain('Use search_content or list_pages to find an exact ID.')
   })
 
   it('returns the full Markdown for an exact page ID', async () => {
@@ -111,11 +112,11 @@ describe('unified pages', () => {
       return new Response(JSON.stringify(input.toString().endsWith('pages.fr.json') ? [frenchPage] : [page]), { headers: { 'Content-Type': 'application/json' } })
     })
     const { server, registerTool } = mockServer()
-    registerGetContentTool(server, env)
+    registerGetPageTool(server, env)
     expect(await registerTool.mock.calls[0]![2]({ id: page.id })).toEqual({ content: [{ type: 'text', text: '# Full page' }] })
   })
 
-  it.each([registerGetContentTool, registerListContentTool])('reports feed failures as tool errors', async (register) => {
+  it.each([registerGetPageTool, registerListPagesTool])('reports feed failures as tool errors', async (register) => {
     mockFeeds([{ ...page, locale: 'invalid' }])
     const { server, registerTool } = mockServer()
     register(server, env)
@@ -129,7 +130,7 @@ describe('unified pages', () => {
     mockFeeds()
     const { server, registerTool } = mockServer()
     const codeEnv = { ...env, CONTENT_LOADER: mockLoader({ resultJson: '["page-1"]' }).loader } as Env
-    registerListContentTool(server, codeEnv)
+    registerListPagesTool(server, codeEnv)
     const run = registerTool.mock.calls[0]![2]
     expect(await run({ code: 'async () => pages' })).toEqual({ content: [{ type: 'text', text: '["page-1"]' }] })
     expect(await run({ code: '() => pages' })).toMatchObject({ isError: true, content: [{ text: 'Code must be a single async JavaScript arrow function.' }] })
@@ -223,10 +224,14 @@ describe('content code mode', () => {
   })
 
   it('documents the unified page array and both locales', () => {
-    const description = listContentDescription
+    const description = listPagesDescription
     expect(description).toContain('const pages: Page[]')
     expect(description).toContain('locale: "en" | "fr"')
     expect(description).toContain('markdownUrl: string')
     expect(description).not.toContain('Catalog')
+    expect(description).toContain('latest matching post')
+    expect(description).toContain('rather than returning the full catalog')
+    expect(description).toContain('get_page')
+    expect(description).toContain('search_content')
   })
 })

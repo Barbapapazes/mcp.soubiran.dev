@@ -26,7 +26,7 @@ function createWorkerCode(pages: readonly unknown[], code: string) {
   return `
 import { WorkerEntrypoint } from 'cloudflare:workers'
 
-const NETWORK_DISABLED_MESSAGE = 'Network access is not available in list_content code mode.'
+const NETWORK_DISABLED_MESSAGE = 'Network access is not available in list_pages code mode.'
 const denyNetwork = () => { throw new Error(NETWORK_DISABLED_MESSAGE) }
 
 for (const name of ['fetch', 'WebSocket', 'EventSource']) {
