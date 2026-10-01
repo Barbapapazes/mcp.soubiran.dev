@@ -9,7 +9,7 @@ export type TelemetryLogger = Pick<RequestLogger, 'emit' | 'set' | 'setLevel'>
 initWorkersLogger({
   env: { service: 'mcp-soubiran-dev' },
   sampling: {
-    rates: { debug: 0, info: 10, warn: 100, error: 100 },
+    rates: { debug: 0, info: 100, warn: 100, error: 100 },
     keep: [{ duration: 1_000 }, { status: 400 }],
   },
   redact: {
