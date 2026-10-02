@@ -1,15 +1,16 @@
 {
   "name": "mcp.soubiran.dev",
+  "type": "module",
   "private": true,
   "packageManager": "pnpm@10.34.5",
   "scripts": {
-    "deploy": "wrangler deploy",
-    "dev": "wrangler dev",
+    "deploy": "cf deploy",
+    "dev": "cf dev",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
-    "start": "wrangler dev",
+    "start": "cf dev",
     "test": "vitest run",
-    "cf-typegen": "wrangler types"
+    "cf-typegen": "cf workers types"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
@@ -23,11 +24,12 @@
   "devDependencies": {
     "@antfu/eslint-config": "^5.4.1",
     "@types/node": "^24.13.3",
+    "cf": "1.0.0-beta.12",
     "eslint": "^9.39.5",
     "miniflare": "^3.20250718.3",
     "taze": "^19.16.0",
     "typescript": "^5.9.3",
     "vitest": "^4.1.10",
-    "wrangler": "^4.114.0"
+    "wrangler": "^4.147.0"
   }
 }

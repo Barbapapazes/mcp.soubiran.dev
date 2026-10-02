@@ -170,3 +170,7 @@ dist
 
 .dev.vars
 .wrangler/
+
+# cf build output (keep generated types versioned)
+.cloudflare/*
+!.cloudflare/types/

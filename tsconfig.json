@@ -18,7 +18,9 @@
     "skipLibCheck": true
   },
   "include": [
-    "worker-configuration.d.ts",
+    ".cloudflare/types/index.d.ts",
+    "cloudflare.config.ts",
+    "wrangler.config.ts",
     "src/**/*.ts",
     "tests/**/*.ts"
   ]
