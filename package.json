@@ -5,6 +5,7 @@
   "packageManager": "pnpm@10.34.5",
   "scripts": {
     "deploy": "cf deploy",
+    "deploy:version": "cf workers versions create",
     "dev": "cf dev",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
