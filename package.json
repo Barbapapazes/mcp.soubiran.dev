@@ -2,7 +2,7 @@
   "name": "mcp.soubiran.dev",
   "type": "module",
   "private": true,
-  "packageManager": "pnpm@10.34.5",
+  "packageManager": "pnpm@12.7.0",
   "scripts": {
     "deploy": "cf deploy",
     "deploy:version": "cf workers versions create",
@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.29.0",
-    "@sentry/cloudflare": "^10.75.3",
+    "@sentry/cloudflare": "^11.0.0",
     "acorn": "^8.18.0",
     "agents": "^0.19.0",
     "evlog": "^2.29.0",
@@ -23,14 +23,14 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@antfu/eslint-config": "^5.4.1",
+    "@antfu/eslint-config": "^9.5.1",
     "@types/node": "^24.19.0",
     "cf": "1.0.0-beta.12",
-    "eslint": "^9.39.5",
-    "miniflare": "^3.20250718.3",
-    "taze": "^19.17.2",
-    "typescript": "^5.9.3",
-    "vitest": "^4.1.11",
+    "eslint": "^10.11.0",
+    "miniflare": "^4.20260730.0",
+    "taze": "^21.1.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.2",
     "wrangler": "^4.147.0"
   }
 }
