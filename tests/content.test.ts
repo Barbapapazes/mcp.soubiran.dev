@@ -155,6 +155,80 @@ describe('unified pages', () => {
     expect(search.mock.calls[0]?.[0].ai_search_options.instance_ids).toEqual(['soubiran-dev'])
   })
 
+  it('returns only citation metadata and compact JSON', async () => {
+    mockFeeds()
+    const search = vi.fn(async () => ({ chunks: [
+      { instance_id: 'soubiran-dev', score: 0.9, text: 'Excerpt', item: { key: '/posts/page', metadata: { id: page.id, sha256: 'hash', chunk_modality: 'text' } } },
+    ] }))
+    const { server, registerTool } = mockServer()
+    registerSearchContentTool(server, { ...env, AI_SEARCH: { search } } as unknown as Env)
+    const result = await registerTool.mock.calls[0]![2]({ query: 'page' })
+    const data = JSON.parse(result.content[0].text)
+    expect(data).toEqual({ results: [{
+      score: 0.9,
+      excerpt: 'Excerpt',
+      content: {
+        id: page.id,
+        locale: 'en',
+        type: 'post',
+        title: 'Page',
+        url: 'https://beta.soubiran.dev/posts/page',
+        date: '2026-01-01',
+      },
+    }] })
+    expect(result.content[0].text).toBe(JSON.stringify(data))
+  })
+
+  it('keeps the highest-ranked excerpt per page and preserves both locales', async () => {
+    mockFeeds()
+    const search = vi.fn(async () => ({ chunks: [
+      { instance_id: 'soubiran-dev', score: 0.7, text: 'Lower-ranked duplicate', item: { metadata: { id: page.id } } },
+      { instance_id: 'other-index', score: 1, text: 'Wrong index', item: { metadata: { id: page.id } } },
+      { instance_id: 'soubiran-dev', score: 0.8, text: 'French excerpt', item: { metadata: { id: frenchPage.id } } },
+      { instance_id: 'soubiran-dev', score: 0.9, text: 'Best English excerpt', item: { metadata: { id: page.id } } },
+    ] }))
+    const { server, registerTool } = mockServer()
+    registerSearchContentTool(server, { ...env, AI_SEARCH: { search } } as unknown as Env)
+    const result = await registerTool.mock.calls[0]![2]({ query: 'page' })
+    const data = JSON.parse(result.content[0].text)
+    expect(data.results.map((result: { excerpt: string }) => result.excerpt)).toEqual(['Best English excerpt', 'French excerpt'])
+    expect(data.results.map((result: { content: { locale: string } }) => result.content.locale)).toEqual(['en', 'fr'])
+  })
+
+  it('limits results to eight known unique pages rather than eight chunks', async () => {
+    const pages = Array.from({ length: 10 }, (_, index) => ({ ...page, id: `page-${index}` }))
+    mockFeeds(pages, [])
+    const search = vi.fn(async () => ({ chunks: [
+      { instance_id: 'soubiran-dev', score: 1, text: 'Unknown page', item: { metadata: { id: 'missing' } } },
+      { instance_id: 'soubiran-dev', score: 1, text: 'Missing ID', item: { metadata: {} } },
+      ...pages.flatMap((page, index) => [
+        { instance_id: 'soubiran-dev', score: 0.9 - index / 100, text: 'Best excerpt', item: { metadata: { id: page.id } } },
+        { instance_id: 'soubiran-dev', score: 0.8 - index / 100, text: 'Duplicate', item: { metadata: { id: page.id } } },
+      ]),
+    ] }))
+    const { server, registerTool } = mockServer()
+    registerSearchContentTool(server, { ...env, AI_SEARCH: { search } } as unknown as Env)
+    const result = await registerTool.mock.calls[0]![2]({ query: 'page' })
+    const data = JSON.parse(result.content[0].text)
+    expect(data.results.map((result: { content: { id: string } }) => result.content.id)).toEqual(pages.slice(0, 8).map(page => page.id))
+  })
+
+  it.each([
+    ['  Short excerpt  ', 'Short excerpt'],
+    ['a'.repeat(1200), 'a'.repeat(1200)],
+    ['a'.repeat(1201), `${'a'.repeat(1199)}…`],
+    ['😀'.repeat(1201), `${'😀'.repeat(1199)}…`],
+  ])('bounds excerpts without splitting Unicode characters', async (text, expected) => {
+    mockFeeds()
+    const search = vi.fn(async () => ({ chunks: [
+      { instance_id: 'soubiran-dev', score: 0.9, text, item: { metadata: { id: page.id } } },
+    ] }))
+    const { server, registerTool } = mockServer()
+    registerSearchContentTool(server, { ...env, AI_SEARCH: { search } } as unknown as Env)
+    const result = await registerTool.mock.calls[0]![2]({ query: 'page' })
+    expect(JSON.parse(result.content[0].text).results[0].excerpt).toBe(expected)
+  })
+
   it('preserves search warnings even when there are no matching pages', async () => {
     mockFeeds()
     const search = vi.fn(async () => ({ chunks: [], errors: [{ instance_id: 'soubiran-dev', message: 'Temporarily unavailable' }] }))

@@ -7,11 +7,24 @@ import { errorResult, textResult } from '../../utils'
 import { errorMessage } from './errors'
 import { loadPages, searchInstanceId } from './pages'
 
+const maxSearchResults = 8
+const maxExcerptCharacters = 1200
+
+type SearchPage = Pick<Page, 'id' | 'locale' | 'type' | 'title' | 'url' | 'date'>
+
+function summarizeExcerpt(text: string): string {
+  const characters = Array.from(text.trim())
+  if (characters.length <= maxExcerptCharacters)
+    return characters.join('')
+
+  return `${characters.slice(0, maxExcerptCharacters - 1).join('').trimEnd()}…`
+}
+
 export function registerSearchContentTool(server: McpServer, env: Env) {
   server.registerTool(
     'search_content',
     {
-      description: 'Discover relevant English and French content by topic or question across titles, descriptions, and body text using Cloudflare AI Search. Results are ranked excerpts with page metadata, a published URL for citations, and a stable ID for get_page. Use get_page to read the full page before summarizing it. Use list_pages for exact metadata filtering, series, or latest-page/date comparisons; search ranking does not establish recency.',
+      description: 'Discover relevant English and French content by topic or question across titles, descriptions, and body text using Cloudflare AI Search. Results contain up to eight unique pages, with the highest-ranked excerpt per page (up to 1,200 characters), citation metadata, and a stable ID for get_page. Use get_page to read the full page before summarizing it. Use list_pages for exact metadata filtering, series, or latest-page/date comparisons; search ranking does not establish recency.',
       annotations: { title: 'Search content', readOnlyHint: true, openWorldHint: true },
       inputSchema: {
         query: z.string().trim().min(1).describe('Natural-language topic or question to search.'),
@@ -43,24 +56,34 @@ export function registerSearchContentTool(server: McpServer, env: Env) {
 
       const warnings = (search.value.errors ?? []).map(error => `Search failed for ${error.instance_id}: ${error.message}`)
       const pagesById = new Map(pages.value.map(page => [page.id, page]))
-      const results: { score: number, excerpt: string, source: string, content: Page, metadata?: Record<string, unknown> }[] = []
-      for (const chunk of search.value.chunks) {
+      const results: { score: number, excerpt: string, content: SearchPage }[] = []
+      const seenPageIds = new Set<string>()
+      const chunks = [...search.value.chunks].sort((a, b) => b.score - a.score)
+      for (const chunk of chunks) {
         if (chunk.instance_id !== searchInstanceId)
           continue
         const id = chunk.item.metadata?.id
         if (typeof id !== 'string')
           continue
         const page = pagesById.get(id)
-        if (!page)
+        if (!page || seenPageIds.has(id))
           continue
 
+        seenPageIds.add(id)
         results.push({
           score: chunk.score,
-          excerpt: chunk.text,
-          source: chunk.item.key,
-          content: page,
-          metadata: chunk.item.metadata,
+          excerpt: summarizeExcerpt(chunk.text),
+          content: {
+            id: page.id,
+            locale: page.locale,
+            type: page.type,
+            title: page.title,
+            url: page.url,
+            ...(page.date ? { date: page.date } : {}),
+          },
         })
+        if (results.length >= maxSearchResults)
+          break
       }
 
       recordTool(log, 'search_content', startedAt, 'success', {
@@ -72,7 +95,7 @@ export function registerSearchContentTool(server: McpServer, env: Env) {
       if (results.length === 0 && warnings.length === 0)
         return textResult('No matching content was found.')
 
-      return textResult(JSON.stringify({ results, ...(warnings.length > 0 ? { warnings } : {}) }, undefined, 2))
+      return textResult(JSON.stringify({ results, ...(warnings.length > 0 ? { warnings } : {}) }))
     },
   )
 }
