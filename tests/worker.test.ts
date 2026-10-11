@@ -28,6 +28,16 @@ beforeEach(() => {
 })
 
 describe('worker requests', () => {
+  it('serves the exact OpenAI domain verification token as plain text', async () => {
+    const response = await worker.fetch!(new Request('https://mcp.soubiran.dev/.well-known/openai-apps-challenge'), env, ctx)
+    expect(response.status).toBe(200)
+    expect(response.headers.get('Content-Type')).toBe('text/plain; charset=utf-8')
+    expect(response.headers.has('Location')).toBe(false)
+    expect(await response.text()).toBe('TDwUyOcyufhOWyEr7ZNrPlWMP07hOvF5528GqXCk6Mk')
+    expect(createMcpHandler).not.toHaveBeenCalled()
+    expect(log.emit).toHaveBeenCalledTimes(1)
+  })
+
   it('redirects other routes without creating an MCP handler', async () => {
     const response = await worker.fetch!(new Request('https://mcp.example.com/'), env, ctx)
     expect(response.status).toBe(302)
