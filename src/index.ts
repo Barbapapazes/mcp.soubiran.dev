@@ -34,12 +34,20 @@ export default Sentry.withSentry(
       let outcome: 'success' | 'http_error' | 'internal_error'
 
       try {
-        response = url.pathname === '/mcp'
-          ? await createMcpHandler(createServer(env), {
-              corsOptions: { origin: env.CORS_ALLOWED_ORIGIN },
-              route: '/mcp',
-            })(request, env, ctx)
-          : Response.redirect(SITE_URL, 302)
+        if (url.pathname === '/.well-known/openai-apps-challenge') {
+          response = new Response('TDwUyOcyufhOWyEr7ZNrPlWMP07hOvF5528GqXCk6Mk', {
+            headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+          })
+        }
+        else if (url.pathname === '/mcp') {
+          response = await createMcpHandler(createServer(env), {
+            corsOptions: { origin: env.CORS_ALLOWED_ORIGIN },
+            route: '/mcp',
+          })(request, env, ctx)
+        }
+        else {
+          response = Response.redirect(SITE_URL, 302)
+        }
         outcome = response.ok ? 'success' : 'http_error'
       }
       catch (error) {
