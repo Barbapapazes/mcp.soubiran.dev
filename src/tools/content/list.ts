@@ -36,7 +36,7 @@ export function registerListPagesTool(server: McpServer, env: Env) {
     'list_pages',
     {
       description: listPagesDescription,
-      annotations: { title: 'List pages with code', readOnlyHint: true, openWorldHint: true },
+      annotations: { title: 'List pages with code', readOnlyHint: true, destructiveHint: false, openWorldHint: true },
       inputSchema: {
         code: z.string().trim().min(1).max(20_000).describe('An async JavaScript arrow function with read-only pages array.'),
       },

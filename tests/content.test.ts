@@ -94,6 +94,19 @@ describe('unified pages', () => {
     expect(fetch).not.toHaveBeenCalled()
   })
 
+  it('registers explicit safety annotations for all tools', () => {
+    const { server, registerTool } = mockServer()
+    registerContentTools(server, env)
+    expect(registerTool.mock.calls).toHaveLength(3)
+    for (const [, config] of registerTool.mock.calls) {
+      expect(config.annotations).toMatchObject({
+        readOnlyHint: true,
+        destructiveHint: false,
+        openWorldHint: true,
+      })
+    }
+  })
+
   it('returns a not-found error for pages not yet published', async () => {
     mockFeeds()
     const { server, registerTool } = mockServer()
