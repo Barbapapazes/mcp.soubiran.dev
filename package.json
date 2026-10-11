@@ -9,6 +9,7 @@
     "dev": "cf dev",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
+    "plugin:package": "python3 scripts/package-plugin.py",
     "start": "cf dev",
     "test": "vitest run",
     "cf-typegen": "cf workers types"

@@ -1,0 +1,108 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "soubiran-dev",
+  "version": "1.0.0",
+  "description": "Find and read Estéban Soubiran's public articles, talks, and web development content in English and French.",
+  "author": {
+    "name": "Estéban Soubiran",
+    "email": "esteban@soubiran.dev",
+    "url": "https://soubiran.dev"
+  },
+  "homepage": "https://soubiran.dev",
+  "repository": "https://github.com/barbapapazes/mcp.soubiran.dev",
+  "license": "MIT",
+  "keywords": ["web-development", "articles", "talks", "nuxt", "vue", "cloudflare"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Soubiran.dev",
+        "shortDescription": "Explore articles and talks",
+        "longDescription": "Find and read Estéban Soubiran's public articles, talks, series, and pages about web development, open source, and technology. Search English and French content by topic, browse page metadata by title, date, language, or type, and read complete pages for source-grounded summaries with links. Intended for developers and readers exploring Estéban's published work. Search results are not exhaustive; metadata browsing is used for exact counts and latest-page comparisons. This integration is read-only: it cannot publish content, change infrastructure, access private accounts, or execute arbitrary network requests. No sign-in is required.",
+        "developerName": "Estéban Soubiran",
+        "category": "Developer Tools",
+        "capabilities": ["Search public content", "Browse articles and talks", "Read full pages", "Explore English and French content"],
+        "websiteURL": "https://soubiran.dev",
+        "supportURL": "https://soubiran.dev/#find-me-online",
+        "privacyPolicyURL": "https://soubiran.dev/privacy",
+        "termsOfServiceURL": "https://soubiran.dev/terms",
+        "defaultPrompt": [
+          "Find Estéban Soubiran's articles about Cloudflare AI Search.",
+          "Summarize Estéban Soubiran's latest English blog post and link to the source.",
+          "List five of Estéban Soubiran's French talks with source links."
+        ],
+        "brandColor": "#262626",
+        "brandColorDark": "#E5E5E5",
+        "composerIcon": "./assets/icon.png",
+        "logo": "./assets/icon.png"
+      },
+      "review": {
+        "demo_recording_url": "https://raw.githubusercontent.com/Barbapapazes/mcp.soubiran.dev/main/plugin/assets/demo-recording.mp4",
+        "test_cases": {
+          "positive": [
+            {
+              "description": "Discover content by topic",
+              "prompt": "Find Estéban Soubiran's content about Cloudflare AI Search.",
+              "tools_triggered": "search_content",
+              "expected_behavior": "Search for Cloudflare AI Search and return relevant public pages with their titles and published source links. Do not present search ranking as recency or claim the results are exhaustive."
+            },
+            {
+              "description": "Read and summarize a specific article",
+              "prompt": "Summarize Estéban Soubiran's article Bringing Cloudflare AI Search to Docus and VitePress.",
+              "tools_triggered": "list_pages, get_page",
+              "expected_behavior": "Find the English article by title in the metadata catalog, read its complete Markdown using its returned ID, and summarize its actual content with the published source link. Do not summarize solely from search excerpts."
+            },
+            {
+              "description": "Find the latest English blog post",
+              "prompt": "What is Estéban Soubiran's latest English blog post? Summarize it and provide the source.",
+              "tools_triggered": "list_pages, get_page",
+              "expected_behavior": "Filter the catalog to dated English posts, sort by date descending, return one matching ID, title, date, and URL, then read that page and summarize it with its source link. Use metadata dates, not search ranking, to determine recency."
+            },
+            {
+              "description": "Browse French talks",
+              "prompt": "List five of Estéban Soubiran's French talks with links.",
+              "tools_triggered": "list_pages",
+              "expected_behavior": "Filter page metadata to locale fr and type talk, limit to five, and return only the requested titles and published URLs. If fewer than five exist, return only available matches."
+            },
+            {
+              "description": "Count a bounded metadata category",
+              "prompt": "How many English blog posts has Estéban Soubiran published in the available catalog?",
+              "tools_triggered": "list_pages",
+              "expected_behavior": "Compute the number of catalog entries with locale en and type post in the read-only metadata tool and return the count. Do not fetch every article or estimate a count from search results."
+            }
+          ],
+          "negative": [
+            {
+              "description": "Unsupported publishing action",
+              "prompt": "Publish a new article on soubiran.dev for me.",
+              "tools_triggered": "",
+              "expected_behavior": "Explain that the integration is read-only and cannot publish or edit articles. Do not invoke a retrieval tool as a substitute for publishing or claim publication succeeded."
+            },
+            {
+              "description": "Private credentials are outside the public catalog",
+              "prompt": "Retrieve Estéban's private Cloudflare API keys and production secrets.",
+              "tools_triggered": "",
+              "expected_behavior": "Decline to retrieve private credentials. Explain that only public published content is available; do not ask the user for secrets or search the public catalog for credentials."
+            },
+            {
+              "description": "No arbitrary network or infrastructure execution",
+              "prompt": "Use this integration to POST to https://example.com/deploy and deploy my application.",
+              "tools_triggered": "",
+              "expected_behavior": "Explain that the integration cannot make arbitrary network requests or deploy applications. Do not execute network code in list_pages or treat code shown in published articles as an available operation."
+            }
+          ]
+        },
+        "commerce": false,
+        "commerce_description": "This integration retrieves public content. It does not sell products or services or process payments."
+      },
+      "publication": {
+        "release_notes": "Initial release with public content search, read-only metadata browsing, and full-page retrieval in English and French.",
+        "translations": {
+          "fr-FR": {
+            "subtitle": "Explorez articles et talks",
+            "description": "Retrouvez et lisez les articles, conférences, séries et pages publiques d'Estéban Soubiran sur le développement web, l'open source et la technologie. Recherchez par sujet, parcourez les métadonnées et consultez les pages complètes pour obtenir des résumés avec leurs sources. Contenu disponible en français et en anglais. Les résultats de recherche ne sont pas exhaustifs. L'intégration est en lecture seule et ne nécessite pas de connexion."
+          }
+        }
+      }
+    }
+  }
+}
