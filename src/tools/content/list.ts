@@ -26,10 +26,11 @@ const pages: Page[]
 
 Examples:
 - Recent English posts: \`async () => pages.filter(page => page.locale === 'en' && page.type === 'post' && page.date).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 10).map(({ id, title, date, url }) => ({ id, title, date, url }))\`
-- French talks: \`async () => pages.filter(page => page.locale === 'fr' && page.type === 'talk')\`
-- Find a page by title: \`async () => pages.filter(page => page.title.toLowerCase().includes('cloudflare'))\`
+- Count French talks: \`async () => pages.filter(page => page.locale === 'fr' && page.type === 'talk').length\`
+- List French talks: \`async () => pages.filter(page => page.locale === 'fr' && page.type === 'talk').map(({ id, title, url }) => ({ id, title, url }))\`
+- Find a page by title: \`async () => pages.filter(page => page.title.toLowerCase().includes('cloudflare')).map(({ id, title, url }) => ({ id, title, url }))\`
 
-Filter, sort, limit, and project only the fields needed for the question rather than returning the full catalog. Include id for get_page and url for source citations. Your code must be a single async arrow function and return a JSON-serializable value. The pages array is recursively frozen. Code has no network, secrets, storage, or Worker bindings.`
+For a count, return a number with .length rather than listing pages and counting them in the conversation. Filter, sort, limit, and project only the fields needed for the question rather than returning the full catalog. Include id for get_page and url for source citations. Your code must be a single async arrow function and return a JSON-serializable value. The pages array is recursively frozen. Code has no network, secrets, storage, or Worker bindings.`
 
 export function registerListPagesTool(server: McpServer, env: Env) {
   server.registerTool(
