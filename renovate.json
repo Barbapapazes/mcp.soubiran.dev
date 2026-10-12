@@ -2,5 +2,14 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "local>Barbapapazes/renovate-config"
+  ],
+  "packageRules": [
+    {
+      "description": "Do not automerge dependency updates in this repository. main has no required status check or review gate, so an unreviewed dependency bump must not merge on its own. Remove this rule only after a required-check ruleset exists on main.",
+      "matchPackageNames": [
+        "*"
+      ],
+      "automerge": false
+    }
   ]
 }
