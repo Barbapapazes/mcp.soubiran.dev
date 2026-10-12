@@ -31,16 +31,25 @@ const snapshot = {
   }],
   documents: [{
     id: 'doc',
+    locale: 'en',
+    type: 'page',
     nodeId: 'service:api.soubiran.dev',
     title: 'API',
     description: 'An API',
-    path: '/infra/services/api',
+    url: '/infra/services/api',
     markdownUrl: '/raw/infra/services/api.md',
-    markdown: '# Authentication\n::infra-ecosystem',
+    date: '2026-01-01',
+    translations: { fr: '/fr/infra/services/api' },
     ecosystem: [{ name: 'API', ecosystem: [{ name: 'nested' }] }],
-    links: [{ href: '/infra', text: 'Infrastructure' }],
+  }, {
+    id: 'infra-index',
+    locale: 'en',
+    title: 'Infrastructure',
+    description: 'Infrastructure overview',
+    url: 'https://beta.soubiran.dev/infra',
+    markdownUrl: 'https://beta.soubiran.dev/raw/infra.md',
+    ecosystem: [],
   }],
-  diagnostics: [{ code: 'unresolved-document-link', documentId: 'doc', href: '/infra/topology.json' }],
 }
 const env = { TOPOLOGY_URL: 'https://beta.soubiran.dev/infra/topology.json' } as Env
 
@@ -80,7 +89,7 @@ afterEach(() => {
 })
 
 describe('topology snapshot and tool', () => {
-  it('loads the versioned snapshot without rewriting evidence or citation paths', async () => {
+  it('loads the versioned snapshot without rewriting evidence or citation URLs', async () => {
     const fetch = mockFeed()
     expect(await loadTopology(env)).toEqual(snapshot)
     expect(fetch.mock.calls[0]?.[0]).toBe(env.TOPOLOGY_URL)
@@ -89,6 +98,10 @@ describe('topology snapshot and tool', () => {
   it.each([
     { ...snapshot, schemaVersion: 2 },
     { ...snapshot, nodes: [{}] },
+    { ...snapshot, nodes: [{ ...snapshot.nodes[0], identity: 'document' }] },
+    { ...snapshot, documents: [{ ...snapshot.documents[0], locale: 'invalid' }] },
+    { ...snapshot, documents: [{ ...snapshot.documents[0], url: undefined }] },
+    { ...snapshot, documents: [{ ...snapshot.documents[0], type: 'invalid' }] },
     { ...snapshot, documents: [{ ...snapshot.documents[0], ecosystem: [{ name: 'outer', ecosystem: [{}] }] }] },
   ])('rejects incompatible and malformed snapshots', async (value) => {
     mockFeed(value)
@@ -103,20 +116,27 @@ describe('topology snapshot and tool', () => {
     expect(fetch).not.toHaveBeenCalled()
   })
 
-  it('queries real embedded data, including Markdown and pointer evidence', async () => {
+  it('queries ecosystem evidence and document-metadata citations', async () => {
     mockFeed()
     const { run } = register()
     const result = await run({ code: `async () => {
       const e = topology.edges[0]; const d = topology.documents[0];
       const source = e.evidence.pointer.split('/').slice(1).reduce((v, s) => v[s], d);
-      return { revision: topology.revision, source, citation: d.path, markdown: d.markdown };
+      return { revision: topology.revision, source, citation: d.url, markdownUrl: d.markdownUrl };
     }` })
     expect(JSON.parse(result.content[0].text)).toEqual({
       revision: snapshot.revision,
       source: snapshot.documents[0]!.ecosystem[0],
-      citation: snapshot.documents[0]!.path,
-      markdown: snapshot.documents[0]!.markdown,
+      citation: snapshot.documents[0]!.url,
+      markdownUrl: snapshot.documents[0]!.markdownUrl,
     })
+  })
+
+  it('exposes non-product documents without requiring a graph node', async () => {
+    mockFeed()
+    const { run } = register()
+    const result = await run({ code: 'async () => topology.documents.filter(d => !d.nodeId)' })
+    expect(JSON.parse(result.content[0].text)).toEqual([snapshot.documents[1]])
   })
 
   it('reports unavailable artifacts without starting an executor', async () => {
@@ -140,9 +160,10 @@ describe('topology snapshot and tool', () => {
   })
 
   it('documents graph semantics, full data contract and untrusted source text', () => {
-    for (const text of ['const topology:', 'revision:', 'diagnostics:', 'producer means item → parent', 'Cycles are valid', 'JSON Pointer', 'untrusted data', 'NOT a live inventory'])
+    for (const text of ['const topology:', 'revision:', 'locale: \'en\' | \'fr\'', 'nodeId?: string', 'translations?:', 'not Markdown bodies', 'Only product documents have a nodeId', 'producer means item → parent', 'Cycles are valid', 'JSON Pointer', 'untrusted data', 'NOT a live inventory'])
       expect(queryTopologyDescription).toContain(text)
     expect(topologySchema.parse(snapshot)).toEqual(snapshot)
+    expect(queryTopologyDescription).not.toMatch(/d\.markdown\b|d\.path\b|diagnostics:|identity:.*'document'/)
   })
 })
 

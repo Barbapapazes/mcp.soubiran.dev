@@ -33,7 +33,7 @@ export const topologySchema = z.object({
     id: z.string().min(1),
     type: z.string().min(1),
     name: z.string().min(1),
-    identity: z.enum(['product', 'repository-url', 'shared-technology', 'scoped', 'document']),
+    identity: z.enum(['product', 'repository-url', 'shared-technology', 'scoped']),
     ownerId: z.string().optional(),
     href: z.string().optional(),
     documentId: z.string().optional(),
@@ -54,24 +54,16 @@ export const topologySchema = z.object({
   })),
   documents: z.array(z.object({
     id: z.string().min(1),
-    nodeId: z.string().min(1),
-    path: z.string().min(1),
+    locale: z.enum(['en', 'fr']),
+    type: z.enum(['page', 'post', 'talk', 'series', 'series_article']).optional(),
+    nodeId: z.string().min(1).optional(),
     title: z.string(),
     description: z.string(),
+    url: z.string().min(1),
     markdownUrl: z.string().min(1),
-    markdown: z.string(),
+    date: z.string().optional(),
+    translations: z.object({ en: z.string().min(1).optional(), fr: z.string().min(1).optional() }).optional(),
     ecosystem: z.array(ecosystemItemSchema),
-    links: z.array(z.object({
-      href: z.string(),
-      text: z.string(),
-      documentId: z.string().optional(),
-      nodeId: z.string().optional(),
-    })),
-  })),
-  diagnostics: z.array(z.object({
-    code: z.literal('unresolved-document-link'),
-    documentId: z.string().min(1),
-    href: z.string(),
   })),
 })
 
@@ -79,7 +71,7 @@ export type Topology = z.infer<typeof topologySchema>
 
 export async function loadTopology(env: Env): Promise<Topology> {
   try {
-    // Preserve source paths and pointers verbatim: evidence resolves against documents.
+    // Preserve source URLs and pointers verbatim: evidence resolves against documents.
     return topologySchema.parse(await ofetch(env.TOPOLOGY_URL, {
       headers: { Accept: 'application/json' },
       timeout: 10_000,
