@@ -3,8 +3,8 @@ import * as Sentry from '@sentry/cloudflare'
 import { z } from 'zod'
 import { createToolLogger, recordTool } from '../../telemetry'
 import { errorResult, textResult } from '../../utils'
-import { executeContentCode } from './code-mode'
-import { ContentCodeExecutionError, errorMessage } from './errors'
+import { CodeExecutionError, errorMessage } from '../code-errors'
+import { executeSnapshotCode } from '../code-mode'
 import { loadPages } from './pages'
 
 export const listPagesDescription = `Analyze metadata for all English and French pages with a read-only async JavaScript arrow function. Use this for exact titles, date comparisons (such as the latest matching post), series, counts, and filtering by locale or type. This does not search body text: use search_content for topic discovery and get_page to read a full page by ID.
@@ -56,7 +56,7 @@ export function registerListPagesTool(server: McpServer, env: Env) {
 
       try {
         const executionStartedAt = performance.now()
-        const resultJson = await executeContentCode(env.CONTENT_LOADER, pages, code)
+        const resultJson = await executeSnapshotCode(env.CONTENT_LOADER, pages, code, 'pages')
         recordTool(log, 'list_pages', startedAt, 'success', {
           input: { codeLength: code.length },
           upstream: { service: 'dynamic-worker-loader', durationMs: Math.round(performance.now() - executionStartedAt) },
@@ -65,7 +65,7 @@ export function registerListPagesTool(server: McpServer, env: Env) {
         return textResult(resultJson)
       }
       catch (error) {
-        if (error instanceof ContentCodeExecutionError) {
+        if (error instanceof CodeExecutionError) {
           recordTool(log, 'list_pages', startedAt, 'client_error', { input: { codeLength: code.length }, errorCode: 'CONTENT_CODE_EXECUTION_FAILED' })
           return errorResult(error.message)
         }
