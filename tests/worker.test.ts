@@ -17,6 +17,10 @@ vi.mock('@sentry/cloudflare', () => ({
 vi.mock('agents/mcp', () => ({ createMcpHandler }))
 vi.mock('evlog/workers', () => ({ createWorkersLogger: () => log }))
 vi.mock('../src/tools/content', () => ({ registerContentTools: vi.fn() }))
+vi.mock('../src/tools/topology', () => ({ registerTopologyTools: vi.fn() }))
+
+const { registerContentTools } = await import('../src/tools/content')
+const { registerTopologyTools } = await import('../src/tools/topology')
 
 const { default: worker } = await import('../src/index')
 const env = { CORS_ALLOWED_ORIGIN: 'https://example.com' } as unknown as Env
@@ -58,6 +62,27 @@ describe('worker requests', () => {
       mcp: { route: true, outcome: 'success' },
     })
     expect(log.emit).toHaveBeenCalledTimes(1)
+  })
+
+  it('serves a separate infrastructure MCP without registering content tools', async () => {
+    const response = await worker.fetch!(new Request('https://mcp.soubiran.dev/infra/mcp'), env, ctx)
+    expect(response.status).toBe(200)
+    expect(createMcpHandler).toHaveBeenCalledWith(expect.anything(), {
+      corsOptions: { origin: env.CORS_ALLOWED_ORIGIN },
+      route: '/infra/mcp',
+    })
+    expect(registerTopologyTools).toHaveBeenCalledTimes(1)
+    expect(registerContentTools).not.toHaveBeenCalled()
+    expect(log.set).toHaveBeenLastCalledWith({
+      request: { durationMs: expect.any(Number) },
+      mcp: { route: true, outcome: 'success' },
+    })
+  })
+
+  it('keeps the original endpoint content-only', async () => {
+    await worker.fetch!(new Request('https://mcp.soubiran.dev/mcp'), env, ctx)
+    expect(registerContentTools).toHaveBeenCalledTimes(1)
+    expect(registerTopologyTools).not.toHaveBeenCalled()
   })
 
   it('records handler failures once, including duration and internal-error outcome', async () => {

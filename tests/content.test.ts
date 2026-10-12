@@ -1,7 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { executeContentCode } from '../src/tools/content/code-mode'
-import { ContentCodeExecutionError, ContentCodeExecutorError } from '../src/tools/content/errors'
+import { CodeExecutionError, CodeExecutorError } from '../src/tools/code-errors'
+import { executeSnapshotCode } from '../src/tools/code-mode'
 import { registerGetPageTool } from '../src/tools/content/get'
 import { registerContentTools } from '../src/tools/content/index'
 import { listPagesDescription, registerListPagesTool } from '../src/tools/content/list'
@@ -195,12 +195,12 @@ describe('unified pages', () => {
 
 describe('content code mode', () => {
   it('accepts a serialized result from the dynamic executor', async () => {
-    await expect(executeContentCode(mockLoader({ resultJson: '["page-1"]' }).loader, [page], 'async () => pages.map(page => page.id)')).resolves.toBe('["page-1"]')
+    await expect(executeSnapshotCode(mockLoader({ resultJson: '["page-1"]' }).loader, [page], 'async () => pages.map(page => page.id)', 'pages')).resolves.toBe('["page-1"]')
   })
 
   it('exposes only the frozen pages array and bakes code into the module without eval', async () => {
     const mock = mockLoader({ resultJson: '[]' })
-    await executeContentCode(mock.loader, [page], 'async () => pages // a trailing comment')
+    await executeSnapshotCode(mock.loader, [page], 'async () => pages // a trailing comment', 'pages')
     expect(mock.source()).toContain('const submittedFunction = (\nasync () => pages // a trailing comment\n)')
     expect(mock.source()).toContain('const pages = deepFreeze([')
     expect(mock.source()).toContain('const result = await submittedFunction()')
@@ -210,19 +210,19 @@ describe('content code mode', () => {
   })
 
   it('rejects non-async-arrow input and submitted code failures', async () => {
-    await expect(executeContentCode(mockLoader({ resultJson: '[]' }).loader, [page], '() => pages')).rejects.toBeInstanceOf(ContentCodeExecutionError)
-    await expect(executeContentCode(mockLoader({ error: 'Network access is not available.' }).loader, [page], 'async () => fetch()')).rejects.toBeInstanceOf(ContentCodeExecutionError)
+    await expect(executeSnapshotCode(mockLoader({ resultJson: '[]' }).loader, [page], '() => pages', 'pages')).rejects.toBeInstanceOf(CodeExecutionError)
+    await expect(executeSnapshotCode(mockLoader({ error: 'Network access is not available.' }).loader, [page], 'async () => fetch()', 'pages')).rejects.toBeInstanceOf(CodeExecutionError)
   })
 
   it.each(['', 'async () =>', 'async function () {}', 'async () => pages; async () => pages'])('rejects invalid or unsupported code: %s', async (code) => {
-    await expect(executeContentCode(mockLoader({ resultJson: '[]' }).loader, [page], code)).rejects.toBeInstanceOf(ContentCodeExecutionError)
+    await expect(executeSnapshotCode(mockLoader({ resultJson: '[]' }).loader, [page], code, 'pages')).rejects.toBeInstanceOf(CodeExecutionError)
   })
 
   it('rejects missing JSON and oversized UTF-8 results', async () => {
-    await expect(executeContentCode(mockLoader({}).loader, [page], 'async () => pages')).rejects.toMatchObject({
+    await expect(executeSnapshotCode(mockLoader({}).loader, [page], 'async () => pages', 'pages')).rejects.toMatchObject({
       message: 'Code must return a JSON-serializable value.',
     })
-    await expect(executeContentCode(mockLoader({ resultJson: JSON.stringify('é'.repeat(128 * 1024)) }).loader, [page], 'async () => pages')).rejects.toMatchObject({
+    await expect(executeSnapshotCode(mockLoader({ resultJson: JSON.stringify('é'.repeat(128 * 1024)) }).loader, [page], 'async () => pages', 'pages')).rejects.toMatchObject({
       message: expect.stringContaining('256 KiB'),
     })
   })
@@ -232,8 +232,8 @@ describe('content code mode', () => {
     const loader = { get: () => {
       throw cause
     } } as unknown as WorkerLoader
-    await expect(executeContentCode(loader, [page], 'async () => pages')).rejects.toBeInstanceOf(ContentCodeExecutorError)
-    await expect(executeContentCode(loader, [page], 'async () => pages')).rejects.toMatchObject({ message: cause.message, cause })
+    await expect(executeSnapshotCode(loader, [page], 'async () => pages', 'pages')).rejects.toBeInstanceOf(CodeExecutorError)
+    await expect(executeSnapshotCode(loader, [page], 'async () => pages', 'pages')).rejects.toMatchObject({ message: cause.message, cause })
   })
 
   it('documents the unified page array and both locales', () => {

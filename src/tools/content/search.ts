@@ -4,7 +4,7 @@ import * as Sentry from '@sentry/cloudflare'
 import { z } from 'zod'
 import { createToolLogger, recordTool } from '../../telemetry'
 import { errorResult, textResult } from '../../utils'
-import { errorMessage } from './errors'
+import { errorMessage } from '../code-errors'
 import { loadPages, searchInstanceId } from './pages'
 
 export function registerSearchContentTool(server: McpServer, env: Env) {

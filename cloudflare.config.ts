@@ -36,6 +36,8 @@ export default defineConfig({
         },
       }),
       CONTENT_LOADER: bindings.workerLoader(),
+      TOPOLOGY_URL: bindings.text('https://beta.soubiran.dev/infra/topology.json'),
+      TOPOLOGY_LOADER: bindings.workerLoader(),
       SENTRY_DSN: bindings.secret(),
     },
   },

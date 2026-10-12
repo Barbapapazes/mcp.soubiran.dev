@@ -1,9 +1,9 @@
 import { parse } from 'acorn'
-import { ContentCodeExecutionError, ContentCodeExecutorError } from './errors'
+import { CodeExecutionError, CodeExecutorError } from './code-errors'
 
 const MAX_RESULT_BYTES = 256 * 1024
 
-interface ContentCodeExecutorEntrypoint {
+interface SnapshotCodeExecutorEntrypoint {
   evaluate: () => Promise<{ error?: string, resultJson?: string }>
 }
 
@@ -13,20 +13,20 @@ function validateCode(code: string) {
     program = parse(code, { ecmaVersion: 'latest', sourceType: 'script' })
   }
   catch (cause) {
-    throw new ContentCodeExecutionError({ cause, message: 'Code must be a valid async JavaScript arrow function.' })
+    throw new CodeExecutionError({ cause, message: 'Code must be a valid async JavaScript arrow function.' })
   }
 
   const statement = program.body[0]
   if (program.body.length !== 1 || statement?.type !== 'ExpressionStatement' || statement.expression.type !== 'ArrowFunctionExpression' || !statement.expression.async) {
-    throw new ContentCodeExecutionError({ cause: new Error('Code must be a single async JavaScript arrow function.') })
+    throw new CodeExecutionError({ cause: new Error('Code must be a single async JavaScript arrow function.') })
   }
 }
 
-function createWorkerCode(pages: readonly unknown[], code: string) {
+function createWorkerCode(data: unknown, code: string, binding: 'pages' | 'topology') {
   return `
 import { WorkerEntrypoint } from 'cloudflare:workers'
 
-const NETWORK_DISABLED_MESSAGE = 'Network access is not available in list_pages code mode.'
+const NETWORK_DISABLED_MESSAGE = 'Network access is not available in code mode.'
 const denyNetwork = () => { throw new Error(NETWORK_DISABLED_MESSAGE) }
 
 for (const name of ['fetch', 'WebSocket', 'EventSource']) {
@@ -53,18 +53,21 @@ function deepFreeze(value) {
   return Object.freeze(value)
 }
 
-const pages = deepFreeze(${JSON.stringify(pages)})
+const ${binding} = deepFreeze(${JSON.stringify(data)})
 const submittedFunction = (
 ${code}
 )
 
-export default class ContentCodeExecutor extends WorkerEntrypoint {
+export default class SnapshotCodeExecutor extends WorkerEntrypoint {
   async evaluate() {
     try {
       const result = await submittedFunction()
       const resultJson = JSON.stringify(result)
       if (typeof resultJson !== 'string')
         throw new Error('Code must return a JSON-serializable value.')
+
+      if (new TextEncoder().encode(resultJson).byteLength > ${MAX_RESULT_BYTES})
+        throw new Error('The code result exceeds the 256 KiB response limit. Return a smaller result.')
 
       return { resultJson }
     }
@@ -76,30 +79,39 @@ export default class ContentCodeExecutor extends WorkerEntrypoint {
 `
 }
 
-export async function executeContentCode(loader: WorkerLoader, pages: readonly unknown[], code: string) {
+export async function executeSnapshotCode(loader: WorkerLoader, data: unknown, code: string, binding: 'pages' | 'topology') {
   validateCode(code)
 
   try {
-    const worker = loader.get(`content-list-${crypto.randomUUID()}`, () => ({
+    const worker = loader.get(`${binding}-${crypto.randomUUID()}`, () => ({
       compatibilityDate: '2026-03-27',
       globalOutbound: null,
       limits: { cpuMs: 50, subRequests: 0 },
       mainModule: 'worker.js',
-      modules: { 'worker.js': createWorkerCode(pages, code) },
+      modules: { 'worker.js': createWorkerCode(data, code, binding) },
     }))
-    const entrypoint = worker.getEntrypoint() as unknown as ContentCodeExecutorEntrypoint
-    const response = await entrypoint.evaluate()
+    const entrypoint = worker.getEntrypoint() as unknown as SnapshotCodeExecutorEntrypoint
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const response = await Promise.race([
+      entrypoint.evaluate(),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new CodeExecutionError({
+          cause: new Error('Execution timed out.'),
+          message: 'Code execution exceeded the 5 second time limit.',
+        })), 5_000)
+      }),
+    ]).finally(() => clearTimeout(timer))
 
     if (response.error) {
-      throw new ContentCodeExecutionError({ cause: new Error(response.error), message: `Code execution failed: ${response.error}` })
+      throw new CodeExecutionError({ cause: new Error(response.error), message: `Code execution failed: ${response.error}` })
     }
 
     if (typeof response.resultJson !== 'string') {
-      throw new ContentCodeExecutionError({ cause: new Error('The executor did not return JSON.'), message: 'Code must return a JSON-serializable value.' })
+      throw new CodeExecutionError({ cause: new Error('The executor did not return JSON.'), message: 'Code must return a JSON-serializable value.' })
     }
 
     if (new TextEncoder().encode(response.resultJson).byteLength > MAX_RESULT_BYTES) {
-      throw new ContentCodeExecutionError({
+      throw new CodeExecutionError({
         cause: new Error(`The code result exceeds ${MAX_RESULT_BYTES} bytes.`),
         message: 'The code result exceeds the 256 KiB response limit. Return a smaller result.',
       })
@@ -108,9 +120,9 @@ export async function executeContentCode(loader: WorkerLoader, pages: readonly u
     return response.resultJson
   }
   catch (cause) {
-    if (cause instanceof ContentCodeExecutionError)
+    if (cause instanceof CodeExecutionError)
       throw cause
 
-    throw new ContentCodeExecutorError({ cause })
+    throw new CodeExecutorError({ cause })
   }
 }
