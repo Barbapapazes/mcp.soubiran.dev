@@ -3,15 +3,19 @@ import * as Sentry from '@sentry/cloudflare'
 import { createMcpHandler } from 'agents/mcp'
 import { createWorkersLogger } from 'evlog/workers'
 import { registerContentTools } from './tools/content'
+import { registerTopologyTools } from './tools/topology'
 import { SITE_URL } from './utils'
 
-function createServer(env: Env) {
+function createServer(env: Env, topology: boolean) {
   const server = new McpServer({
-    name: 'Estéban\'s MCP Server for soubiran.dev',
+    name: topology ? 'Estéban\'s Infrastructure Topology MCP' : 'Estéban\'s MCP Server for soubiran.dev',
     version: '1.0.0',
   })
 
-  registerContentTools(server, env)
+  if (topology)
+    registerTopologyTools(server, env)
+  else
+    registerContentTools(server, env)
 
   return server
 }
@@ -39,10 +43,10 @@ export default Sentry.withSentry(
             headers: { 'Content-Type': 'text/plain; charset=utf-8' },
           })
         }
-        else if (url.pathname === '/mcp') {
-          response = await createMcpHandler(createServer(env), {
+        else if (url.pathname === '/mcp' || url.pathname === '/infra/mcp') {
+          response = await createMcpHandler(createServer(env, url.pathname === '/infra/mcp'), {
             corsOptions: { origin: env.CORS_ALLOWED_ORIGIN },
-            route: '/mcp',
+            route: url.pathname,
           })(request, env, ctx)
         }
         else {
@@ -60,7 +64,7 @@ export default Sentry.withSentry(
 
       log.set({
         request: { durationMs: Math.round(performance.now() - startedAt) },
-        mcp: { route: url.pathname === '/mcp', outcome },
+        mcp: { route: url.pathname === '/mcp' || url.pathname === '/infra/mcp', outcome },
       })
       log.emit()
       return response
