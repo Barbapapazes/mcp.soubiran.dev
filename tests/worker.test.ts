@@ -1,3 +1,5 @@
+import { createExecutionContext, waitOnExecutionContext } from 'cloudflare:test'
+import { env } from 'cloudflare:workers'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const { captureException, handleMcp, createMcpHandler, log } = vi.hoisted(() => {
@@ -23,8 +25,12 @@ const { registerContentTools } = await import('../src/tools/content')
 const { registerTopologyTools } = await import('../src/tools/topology')
 
 const { default: worker } = await import('../src/index')
-const env = { CORS_ALLOWED_ORIGIN: 'https://example.com' } as unknown as Env
-const ctx = {} as ExecutionContext
+async function fetchWorker(url: string) {
+  const ctx = createExecutionContext()
+  const response = await worker.fetch!(new Request(url), env, ctx)
+  await waitOnExecutionContext(ctx)
+  return response
+}
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -33,7 +39,7 @@ beforeEach(() => {
 
 describe('worker requests', () => {
   it('serves the exact OpenAI domain verification token as plain text', async () => {
-    const response = await worker.fetch!(new Request('https://mcp.soubiran.dev/.well-known/openai-apps-challenge'), env, ctx)
+    const response = await fetchWorker('https://mcp.soubiran.dev/.well-known/openai-apps-challenge')
     expect(response.status).toBe(200)
     expect(response.headers.get('Content-Type')).toBe('text/plain; charset=utf-8')
     expect(response.headers.has('Location')).toBe(false)
@@ -43,7 +49,7 @@ describe('worker requests', () => {
   })
 
   it('redirects other routes without creating an MCP handler', async () => {
-    const response = await worker.fetch!(new Request('https://mcp.example.com/'), env, ctx)
+    const response = await fetchWorker('https://mcp.example.com/')
     expect(response.status).toBe(302)
     expect(response.headers.get('Location')).toBe('https://soubiran.dev/')
     expect(createMcpHandler).not.toHaveBeenCalled()
@@ -51,7 +57,7 @@ describe('worker requests', () => {
   })
 
   it('handles MCP requests with the configured CORS origin', async () => {
-    const response = await worker.fetch!(new Request('https://mcp.example.com/mcp'), env, ctx)
+    const response = await fetchWorker('https://mcp.example.com/mcp')
     expect(response.status).toBe(200)
     expect(createMcpHandler).toHaveBeenCalledWith(expect.anything(), {
       corsOptions: { origin: env.CORS_ALLOWED_ORIGIN },
@@ -65,7 +71,7 @@ describe('worker requests', () => {
   })
 
   it('serves a separate infrastructure MCP without registering content tools', async () => {
-    const response = await worker.fetch!(new Request('https://mcp.soubiran.dev/infra/mcp'), env, ctx)
+    const response = await fetchWorker('https://mcp.soubiran.dev/infra/mcp')
     expect(response.status).toBe(200)
     expect(createMcpHandler).toHaveBeenCalledWith(expect.anything(), {
       corsOptions: { origin: env.CORS_ALLOWED_ORIGIN },
@@ -80,7 +86,7 @@ describe('worker requests', () => {
   })
 
   it('keeps the original endpoint content-only', async () => {
-    await worker.fetch!(new Request('https://mcp.soubiran.dev/mcp'), env, ctx)
+    await fetchWorker('https://mcp.soubiran.dev/mcp')
     expect(registerContentTools).toHaveBeenCalledTimes(1)
     expect(registerTopologyTools).not.toHaveBeenCalled()
   })
@@ -88,7 +94,7 @@ describe('worker requests', () => {
   it('records handler failures once, including duration and internal-error outcome', async () => {
     const error = new Error('Handler failed')
     handleMcp.mockRejectedValue(error)
-    const response = await worker.fetch!(new Request('https://mcp.example.com/mcp'), env, ctx)
+    const response = await fetchWorker('https://mcp.example.com/mcp')
     expect(response.status).toBe(500)
     expect(await response.text()).toBe('Internal Server Error')
     expect(captureException).toHaveBeenCalledWith(error)

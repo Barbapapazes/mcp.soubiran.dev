@@ -1,4 +1,5 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { env as runtimeEnv } from 'cloudflare:workers'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CodeExecutionError, CodeExecutorError } from '../src/tools/code-errors'
 import { executeSnapshotCode } from '../src/tools/code-mode'
@@ -330,6 +331,10 @@ describe('unified pages', () => {
 })
 
 describe('content code mode', () => {
+  it('executes a page query with the real Worker Loader binding', async () => {
+    await expect(executeSnapshotCode(runtimeEnv.CONTENT_LOADER, [page], 'async () => pages.map(page => page.id)', 'pages')).resolves.toBe(JSON.stringify([page.id]))
+  })
+
   it('accepts a serialized result from the dynamic executor', async () => {
     await expect(executeSnapshotCode(mockLoader({ resultJson: '["page-1"]' }).loader, [page], 'async () => pages.map(page => page.id)', 'pages')).resolves.toBe('["page-1"]')
   })

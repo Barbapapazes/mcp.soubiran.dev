@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "target": "es2022",
+    "types": ["@cloudflare/vitest-plugin/types"],
     "jsx": "react-jsx",
     "lib": [
       "es2022"
@@ -21,6 +22,7 @@
     ".cloudflare/types/index.d.ts",
     "cloudflare.config.ts",
     "wrangler.config.ts",
+    "vitest.config.ts",
     "src/**/*.ts",
     "tests/**/*.ts"
   ]

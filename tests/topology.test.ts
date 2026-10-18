@@ -1,5 +1,5 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { runInNewContext } from 'node:vm'
+import { env as runtimeEnv } from 'cloudflare:workers'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CodeExecutionError, CodeExecutorError } from '../src/tools/code-errors'
 import { executeSnapshotCode } from '../src/tools/code-mode'
@@ -59,21 +59,15 @@ function mockFeed(value: unknown = snapshot) {
   return fetch
 }
 
-// Execute the generated module's body, not a canned RPC response. Runtime binding
-// isolation still needs deployment validation on Cloudflare's Worker Loader.
+// Capture the sandbox options while executing the unmodified ES module in workerd.
 function localLoader() {
   let definition: any
   const loader = {
-    get: (_name: string, factory: () => unknown) => {
+    get: (name, factory) => runtimeEnv.TOPOLOGY_LOADER.get(name, () => {
       definition = factory()
-      return { getEntrypoint: () => {
-        const source = definition.modules['worker.js']
-          .replace('import { WorkerEntrypoint } from \'cloudflare:workers\'', 'class WorkerEntrypoint {}')
-          .replace('export default class SnapshotCodeExecutor', 'class SnapshotCodeExecutor')
-        return runInNewContext(`${source}\nnew SnapshotCodeExecutor()`, { TextEncoder }, { timeout: 500 })
-      } }
-    },
-  } as unknown as WorkerLoader
+      return definition
+    }),
+  } as WorkerLoader
   return { loader, definition: () => definition }
 }
 
@@ -185,14 +179,15 @@ describe('topology dynamic worker', () => {
     'async () => 1n',
     'async () => "é".repeat(128 * 1024)',
   ])('rejects mutation, network, and invalid results: %s', async (code) => {
-    // VM scripts are not ES modules, so explicitly enable strict mode here.
-    const strict = code.replace('async () => {', 'async () => { "use strict";')
-    await expect(executeSnapshotCode(localLoader().loader, snapshot, strict, 'topology')).rejects.toBeInstanceOf(CodeExecutionError)
+    await expect(executeSnapshotCode(localLoader().loader, snapshot, code, 'topology')).rejects.toBeInstanceOf(CodeExecutionError)
   })
 
   it('enforces a wall-clock timeout for unresolved promises', async () => {
     vi.useFakeTimers()
-    const pending = executeSnapshotCode(localLoader().loader, snapshot, 'async () => new Promise(() => {})', 'topology')
+    const loader = { get: () => ({
+      getEntrypoint: () => ({ evaluate: () => new Promise(() => {}) }),
+    }) } as unknown as WorkerLoader
+    const pending = executeSnapshotCode(loader, snapshot, 'async () => topology', 'topology')
     const assertion = expect(pending).rejects.toThrow('5 second time limit')
     await vi.advanceTimersByTimeAsync(5_000)
     await assertion
