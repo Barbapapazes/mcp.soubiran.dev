@@ -1,5 +1,5 @@
-import { ofetch } from 'ofetch'
 import { z } from 'zod'
+import { loadRemoteJson } from '../remote-document'
 
 const evidenceSchema = z.object({ documentId: z.string().min(1), pointer: z.string() })
 const relationshipSchema = z.enum(['producer', 'consumer'])
@@ -70,15 +70,6 @@ export const topologySchema = z.object({
 export type Topology = z.infer<typeof topologySchema>
 
 export async function loadTopology(env: Env): Promise<Topology> {
-  try {
-    // Preserve source URLs and pointers verbatim: evidence resolves against documents.
-    return topologySchema.parse(await ofetch(env.TOPOLOGY_URL, {
-      headers: { Accept: 'application/json' },
-      timeout: 10_000,
-      retry: 0,
-    }))
-  }
-  catch (cause) {
-    throw new Error('The topology snapshot is unavailable or has an unsupported schema.', { cause })
-  }
+  // Preserve source URLs and pointers verbatim: evidence resolves against documents.
+  return loadRemoteJson(env.TOPOLOGY_URL, 'topology snapshot', topologySchema)
 }

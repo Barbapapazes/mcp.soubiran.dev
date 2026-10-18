@@ -105,7 +105,7 @@ describe('topology snapshot and tool', () => {
     { ...snapshot, documents: [{ ...snapshot.documents[0], ecosystem: [{ name: 'outer', ecosystem: [{}] }] }] },
   ])('rejects incompatible and malformed snapshots', async (value) => {
     mockFeed(value)
-    await expect(loadTopology(env)).rejects.toThrow('unavailable or has an unsupported schema')
+    await expect(loadTopology(env)).rejects.toMatchObject({ kind: 'schema', message: expect.stringContaining('does not match the expected schema') })
   })
 
   it('registers only the topology tool without fetching data', () => {

@@ -72,7 +72,7 @@ describe('unified pages', () => {
 
   it('rejects invalid feeds and duplicate IDs', async () => {
     mockFeeds([{ ...page, locale: 'invalid' }])
-    await expect(loadPagesFeed(env.PAGES_EN_URL)).rejects.toMatchObject({ message: 'The pages feed returned an unexpected response.' })
+    await expect(loadPagesFeed(env.PAGES_EN_URL)).rejects.toMatchObject({ kind: 'schema', message: expect.stringContaining('does not match the expected schema') })
     mockFeeds([page], [{ ...frenchPage, id: page.id }])
     await expect(loadPages(env)).rejects.toMatchObject({ message: expect.stringContaining('appears in multiple pages') })
   })
