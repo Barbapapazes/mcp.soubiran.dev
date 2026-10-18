@@ -8,6 +8,8 @@ export default defineConfig({
       'nodejs_compat',
     ],
     entrypoint: 'src/index.ts',
+    // Branch versions must not expose public endpoints with production bindings.
+    previewUrls: false,
     observability: {
       enabled: true,
       issues: {
@@ -39,6 +41,8 @@ export default defineConfig({
       TOPOLOGY_URL: bindings.text('https://beta.soubiran.dev/infra/topology.json'),
       TOPOLOGY_LOADER: bindings.workerLoader(),
       SENTRY_DSN: bindings.secret(),
+      // @sentry/cloudflare uses this binding's id as the default release.
+      CF_VERSION_METADATA: bindings.versionMetadata(),
     },
   },
 })
