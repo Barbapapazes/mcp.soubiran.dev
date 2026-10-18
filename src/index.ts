@@ -2,6 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import * as Sentry from '@sentry/cloudflare'
 import { createMcpHandler } from 'agents/mcp'
 import { createWorkersLogger } from 'evlog/workers'
+import { shapeError } from './error-context'
 import { registerContentTools } from './tools/content'
 import { registerTopologyTools } from './tools/topology'
 import { SITE_URL } from './utils'
@@ -57,7 +58,7 @@ export default Sentry.withSentry(
       catch (error) {
         Sentry.captureException(error)
         log.setLevel('error')
-        log.set({ mcp: { errorCode: 'MCP_HANDLER_FAILED' } })
+        log.set({ mcp: { errorCode: 'MCP_HANDLER_FAILED', error: shapeError(error) } })
         outcome = 'internal_error'
         response = new Response('Internal Server Error', { status: 500 })
       }

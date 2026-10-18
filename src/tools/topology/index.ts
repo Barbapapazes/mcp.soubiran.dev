@@ -67,7 +67,7 @@ export function registerTopologyTools(server: McpServer, env: Env) {
     }
     catch (error) {
       Sentry.captureException(error)
-      recordTool(log, 'query_topology', startedAt, 'upstream_error', { errorCode: 'TOPOLOGY_RETRIEVAL_FAILED' })
+      recordTool(log, 'query_topology', startedAt, 'upstream_error', { errorCode: 'TOPOLOGY_RETRIEVAL_FAILED' }, error)
       return errorResult('Unable to retrieve the infrastructure topology. The published schemaVersion 1 snapshot may not be deployed yet.')
     }
 
@@ -84,7 +84,7 @@ export function registerTopologyTools(server: McpServer, env: Env) {
         return errorResult(error.message)
       }
       Sentry.captureException(error)
-      recordTool(log, 'query_topology', startedAt, 'upstream_error', { errorCode: 'TOPOLOGY_EXECUTOR_FAILED' })
+      recordTool(log, 'query_topology', startedAt, 'upstream_error', { errorCode: 'TOPOLOGY_EXECUTOR_FAILED' }, error)
       return errorResult('Unable to execute code against the infrastructure topology.')
     }
   })
