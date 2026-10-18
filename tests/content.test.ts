@@ -165,7 +165,143 @@ describe('unified pages', () => {
     const data = JSON.parse(result.content[0].text)
     expect(data.results).toHaveLength(1)
     expect(data.results[0].content).toMatchObject({ id: page.id, locale: 'en' })
-    expect(search.mock.calls[0]?.[0].ai_search_options.instance_ids).toEqual(['soubiran-dev'])
+    expect(search.mock.calls[0]?.[0].ai_search_options).toMatchObject({
+      instance_ids: ['soubiran-dev'],
+      retrieval: { max_num_results: 20, return_on_failure: false },
+    })
+  })
+
+  it('returns only citation metadata and compact JSON', async () => {
+    mockFeeds()
+    const search = vi.fn(async () => ({ chunks: [
+      { instance_id: 'soubiran-dev', score: 0.9, text: 'Excerpt', item: { key: '/posts/page', metadata: { id: page.id, sha256: 'hash', chunk_modality: 'text' } } },
+    ] }))
+    const { server, registerTool } = mockServer()
+    registerSearchContentTool(server, { ...env, AI_SEARCH: { search } } as unknown as Env)
+    const result = await registerTool.mock.calls[0]![2]({ query: 'page' })
+    const data = JSON.parse(result.content[0].text)
+    expect(data).toEqual({ results: [{
+      score: 0.9,
+      excerpt: 'Excerpt',
+      content: {
+        id: page.id,
+        locale: 'en',
+        type: 'post',
+        title: 'Page',
+        url: 'https://beta.soubiran.dev/posts/page',
+        date: '2026-01-01',
+      },
+    }] })
+    expect(result.content[0].text).toBe(JSON.stringify(data))
+  })
+
+  it('keeps the highest-ranked excerpt per page and preserves both locales', async () => {
+    mockFeeds()
+    const search = vi.fn(async () => ({ chunks: [
+      { instance_id: 'soubiran-dev', score: 0.7, text: 'Lower-ranked duplicate', item: { metadata: { id: page.id } } },
+      { instance_id: 'other-index', score: 1, text: 'Wrong index', item: { metadata: { id: page.id } } },
+      { instance_id: 'soubiran-dev', score: 0.8, text: 'French excerpt', item: { metadata: { id: frenchPage.id } } },
+      { instance_id: 'soubiran-dev', score: 0.9, text: 'Best English excerpt', item: { metadata: { id: page.id } } },
+    ] }))
+    const { server, registerTool } = mockServer()
+    registerSearchContentTool(server, { ...env, AI_SEARCH: { search } } as unknown as Env)
+    const result = await registerTool.mock.calls[0]![2]({ query: 'page' })
+    const data = JSON.parse(result.content[0].text)
+    expect(data.results.map((result: { excerpt: string }) => result.excerpt)).toEqual(['Best English excerpt', 'French excerpt'])
+    expect(data.results.map((result: { content: { locale: string } }) => result.content.locale)).toEqual(['en', 'fr'])
+  })
+
+  it('limits results to eight known unique pages rather than eight chunks', async () => {
+    const pages = Array.from({ length: 10 }, (_, index) => ({ ...page, id: `page-${index}` }))
+    mockFeeds(pages, [])
+    const search = vi.fn(async () => ({ chunks: [
+      { instance_id: 'soubiran-dev', score: 1, text: 'Unknown page', item: { metadata: { id: 'missing' } } },
+      { instance_id: 'soubiran-dev', score: 1, text: 'Missing ID', item: { metadata: {} } },
+      ...pages.flatMap((page, index) => [
+        { instance_id: 'soubiran-dev', score: 0.9 - index / 100, text: 'Best excerpt', item: { metadata: { id: page.id } } },
+        { instance_id: 'soubiran-dev', score: 0.8 - index / 100, text: 'Duplicate', item: { metadata: { id: page.id } } },
+      ]),
+    ] }))
+    const { server, registerTool } = mockServer()
+    registerSearchContentTool(server, { ...env, AI_SEARCH: { search } } as unknown as Env)
+    const result = await registerTool.mock.calls[0]![2]({ query: 'page' })
+    const data = JSON.parse(result.content[0].text)
+    expect(data.results.map((result: { content: { id: string } }) => result.content.id)).toEqual(pages.slice(0, 8).map(page => page.id))
+  })
+
+  it('filters using published locale and page type before applying the unique-page limit', async () => {
+    const secondPost = { ...page, id: 'second-post', title: 'Second post' }
+    const talk = { ...page, id: 'talk', type: 'talk' }
+    mockFeeds([page, secondPost, talk])
+    const search = vi.fn(async () => ({ chunks: [
+      { instance_id: 'soubiran-dev', score: 1, text: 'French', item: { metadata: { id: frenchPage.id, locale: 'en', type: 'post' } } },
+      { instance_id: 'soubiran-dev', score: 0.95, text: 'Talk', item: { metadata: { id: talk.id, type: 'post' } } },
+      { instance_id: 'soubiran-dev', score: 0.9, text: 'First', item: { metadata: { id: page.id, type: 'section' } } },
+      { instance_id: 'soubiran-dev', score: 0.85, text: 'Duplicate', item: { metadata: { id: page.id } } },
+      { instance_id: 'soubiran-dev', score: 0.8, text: 'Second', item: { metadata: { id: secondPost.id } } },
+    ] }))
+    const { server, registerTool } = mockServer()
+    registerSearchContentTool(server, { ...env, AI_SEARCH: { search } } as unknown as Env)
+    const run = registerTool.mock.calls[0]![2]
+    const result = await run({ query: 'Cloudflare', locale: 'en', type: 'post', limit: 2 })
+    expect(JSON.parse(result.content[0].text).results.map((result: { content: { id: string } }) => result.content.id)).toEqual([page.id, secondPost.id])
+    const limited = await run({ query: 'Cloudflare', locale: 'en', type: 'post', limit: 1 })
+    expect(JSON.parse(limited.content[0].text).results).toHaveLength(1)
+    const french = await run({ query: 'Cloudflare', locale: 'fr' })
+    expect(JSON.parse(french.content[0].text).results.map((result: { content: { id: string } }) => result.content.id)).toEqual([frenchPage.id])
+    const talks = await run({ query: 'Cloudflare', type: 'talk' })
+    expect(JSON.parse(talks.content[0].text).results.map((result: { content: { id: string } }) => result.content.id)).toEqual([talk.id])
+    const empty = await run({ query: 'Cloudflare', type: 'series' })
+    expect(empty.content[0].text).toContain('does not establish')
+  })
+
+  it('validates search inputs and keeps existing query-only calls valid', () => {
+    const { server, registerTool } = mockServer()
+    registerSearchContentTool(server, env)
+    const { inputSchema, description } = registerTool.mock.calls[0]![1]
+    expect(inputSchema.query.parse('  Cloudflare  ')).toBe('Cloudflare')
+    expect(inputSchema.locale.parse(undefined)).toBeUndefined()
+    expect(inputSchema.type.parse(undefined)).toBeUndefined()
+    expect(inputSchema.limit.parse(undefined)).toBeUndefined()
+    for (const query of ['', ' ', 'a'.repeat(1001)])
+      expect(inputSchema.query.safeParse(query).success).toBe(false)
+    for (const locale of ['de', 'EN'])
+      expect(inputSchema.locale.safeParse(locale).success).toBe(false)
+    for (const limit of [0, 9, 1.5, '3'])
+      expect(inputSchema.limit.safeParse(limit).success).toBe(false)
+    expect(inputSchema.type.parse('documentation')).toBe('documentation')
+    expect(inputSchema.type.safeParse(' ').success).toBe(false)
+    expect(description).toContain('results are not exhaustive')
+  })
+
+  it('keeps an eight-page response below 45 KiB even with long Unicode excerpts', async () => {
+    const pages = Array.from({ length: 8 }, (_, index) => ({ ...page, id: `page-${index}` }))
+    mockFeeds(pages, [])
+    const search = vi.fn(async () => ({ chunks: pages.flatMap(page => [
+      { instance_id: 'soubiran-dev', score: 0.9, text: '😀'.repeat(10000), item: { metadata: { id: page.id } } },
+      { instance_id: 'soubiran-dev', score: 0.8, text: 'Duplicate', item: { metadata: { id: page.id } } },
+    ]) }))
+    const { server, registerTool } = mockServer()
+    registerSearchContentTool(server, { ...env, AI_SEARCH: { search } } as unknown as Env)
+    const result = await registerTool.mock.calls[0]![2]({ query: 'Cloudflare' })
+    expect(JSON.parse(result.content[0].text).results).toHaveLength(8)
+    expect(new TextEncoder().encode(result.content[0].text).byteLength).toBeLessThan(45 * 1024)
+  })
+
+  it.each([
+    ['  Short excerpt  ', 'Short excerpt'],
+    ['a'.repeat(1200), 'a'.repeat(1200)],
+    ['a'.repeat(1201), `${'a'.repeat(1199)}…`],
+    ['😀'.repeat(1201), `${'😀'.repeat(1199)}…`],
+  ])('bounds excerpts without splitting Unicode characters', async (text, expected) => {
+    mockFeeds()
+    const search = vi.fn(async () => ({ chunks: [
+      { instance_id: 'soubiran-dev', score: 0.9, text, item: { metadata: { id: page.id } } },
+    ] }))
+    const { server, registerTool } = mockServer()
+    registerSearchContentTool(server, { ...env, AI_SEARCH: { search } } as unknown as Env)
+    const result = await registerTool.mock.calls[0]![2]({ query: 'page' })
+    expect(JSON.parse(result.content[0].text).results[0].excerpt).toBe(expected)
   })
 
   it('preserves search warnings even when there are no matching pages', async () => {
@@ -177,11 +313,11 @@ describe('unified pages', () => {
     expect(JSON.parse(result.content[0].text)).toEqual({ results: [], warnings: ['Search failed for soubiran-dev: Temporarily unavailable'] })
   })
 
-  it('returns a plain message for an empty search without warnings', async () => {
+  it('does not assert corpus-wide absence for an empty search without warnings', async () => {
     mockFeeds()
     const { server, registerTool } = mockServer()
     registerSearchContentTool(server, { ...env, AI_SEARCH: { search: async () => ({ chunks: [] }) } } as unknown as Env)
-    expect(await registerTool.mock.calls[0]![2]({ query: 'page' })).toEqual({ content: [{ type: 'text', text: 'No matching content was found.' }] })
+    expect(await registerTool.mock.calls[0]![2]({ query: 'page' })).toEqual({ content: [{ type: 'text', text: 'No matching pages were returned for this query and filters. This does not establish that no such content exists on the site.' }] })
   })
 
   it('reports search failures before feed failures', async () => {
@@ -244,6 +380,8 @@ describe('content code mode', () => {
     expect(description).not.toContain('Catalog')
     expect(description).toContain('latest matching post')
     expect(description).toContain('rather than returning the full catalog')
+    expect(description).toContain('page.type === \'talk\').length')
+    expect(description).toContain('return a number with .length')
     expect(description).toContain('get_page')
     expect(description).toContain('search_content')
   })
