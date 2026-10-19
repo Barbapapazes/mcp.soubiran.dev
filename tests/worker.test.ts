@@ -22,21 +22,25 @@ vi.mock('../src/tools/topology', () => ({ registerTopologyTools: vi.fn() }))
 const { registerContentTools } = await import('../src/tools/content')
 const { registerTopologyTools } = await import('../src/tools/topology')
 
-const { authorizationServer } = await import('../src/oauth')
-const validateToken = vi.spyOn(authorizationServer, 'validateToken')
+vi.mock('../src/auth', async (importOriginal) => ({
+  ...await importOriginal<typeof import('../src/auth')>(),
+  validatePassportToken: vi.fn(),
+}))
+const { validatePassportToken } = await import('../src/auth')
+const validateToken = vi.mocked(validatePassportToken)
 const { default: worker } = await import('../src/index')
 const env = { CORS_ALLOWED_ORIGIN: 'https://example.com' } as unknown as Env
 const ctx = {} as ExecutionContext
-const authenticated = (url: string) => new Request(url, { headers: { Authorization: 'Bearer valid-worker-token' } })
+const authenticated = (url: string) => new Request(url, { headers: { Authorization: 'Bearer valid-passport-token' } })
 
 beforeEach(() => {
   vi.clearAllMocks()
-  validateToken.mockImplementation(async (resource, token) => token === 'valid-worker-token' ? {
+  validateToken.mockImplementation(async (token, resource) => token === 'valid-passport-token' ? {
     audience: resource,
     scope: [resource.includes('/infra/') ? 'mcp:infra:read' : 'mcp:content:read'],
-    props: { kind: 'interactive' },
+    props: { kind: 'interactive', scopes: [resource.includes('/infra/') ? 'mcp:infra:read' : 'mcp:content:read'] },
     expiresAt: Date.now() / 1000 + 300,
-    userId: 'user', clientId: 'client',
+    userId: 'user',
   } : null)
   handleMcp.mockResolvedValue(new Response('OK'))
 })
@@ -48,6 +52,13 @@ describe('worker requests', () => {
     expect(response.headers.get('WWW-Authenticate')).toContain('resource_metadata=')
     expect(createMcpHandler).not.toHaveBeenCalled()
   })
+  it.each(['/authorize', '/oauth/token', '/oauth/register', '/oauth/callback', '/.well-known/oauth-authorization-server'])('does not expose an authorization-server endpoint at %s', async (path) => {
+    const response = await worker.fetch!(new Request(`https://mcp.soubiran.dev${path}`), env, ctx)
+    expect(response.status).toBe(404)
+    expect(validateToken).not.toHaveBeenCalled()
+    expect(createMcpHandler).not.toHaveBeenCalled()
+  })
+
   it('serves the exact OpenAI domain verification token as plain text', async () => {
     const response = await worker.fetch!(new Request('https://mcp.soubiran.dev/.well-known/openai-apps-challenge'), env, ctx)
     expect(response.status).toBe(200)

@@ -15,7 +15,6 @@
     "cf-typegen": "cf workers types"
   },
   "dependencies": {
-    "@cloudflare/workers-oauth-provider": "1.2.3",
     "jose": "6.2.12",
     "@modelcontextprotocol/sdk": "1.32.1",
     "@sentry/cloudflare": "^10.76.2",

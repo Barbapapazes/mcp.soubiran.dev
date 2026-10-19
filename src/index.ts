@@ -5,7 +5,7 @@ import { createMcpHandler } from 'agents/mcp'
 import { createWorkersLogger } from 'evlog/workers'
 import { shapeError } from './error-context'
 import { CONTENT_RESOURCE, INFRA_RESOURCE } from './auth'
-import { authorizationServer, interactive, protectedResource } from './oauth'
+import { protectedResource } from './resource-server'
 import { registerContentTools } from './tools/content'
 import { registerTopologyTools } from './tools/topology'
 import { SITE_URL } from './utils'
@@ -77,11 +77,8 @@ export default Sentry.withSentry(
         else if (url.pathname === '/.well-known/oauth-protected-resource/infra/mcp') {
           response = await infraResource.fetch(request, env, ctx)
         }
-        else if (url.pathname === '/authorize' || url.pathname === '/oauth/callback') {
-          response = await interactive(request, env)
-        }
-        else if (url.pathname.startsWith('/oauth/') || url.pathname.startsWith('/.well-known/oauth-authorization-server')) {
-          response = await authorizationServer.fetch(request, env, ctx)
+        else if (url.pathname === '/authorize' || url.pathname.startsWith('/oauth/') || url.pathname.startsWith('/.well-known/oauth-authorization-server')) {
+          response = new Response('Not found', { status: 404 })
         }
         else {
           response = Response.redirect(SITE_URL, 302)

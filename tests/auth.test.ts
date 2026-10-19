@@ -2,8 +2,8 @@ import type { JWTPayload } from 'jose'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { exportJWK, generateKeyPair, SignJWT } from 'jose'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { canUseTool, CONTENT_RESOURCE, CONTENT_SCOPE, INFRA_RESOURCE, validateServiceToken } from '../src/auth'
-import { protectedResource } from '../src/oauth'
+import { canUseTool, CONTENT_RESOURCE, CONTENT_SCOPE, INFRA_RESOURCE, INFRA_SCOPE, PASSPORT_ISSUER, validatePassportToken, validateServiceToken } from '../src/auth'
+import { protectedResource } from '../src/resource-server'
 import { registerContentTools } from '../src/tools/content'
 import { registerTopologyTools } from '../src/tools/topology'
 
@@ -72,13 +72,48 @@ describe('Passport service credentials', () => {
     expect(await validateServiceToken(await token(), CONTENT_RESOURCE, { ...env, PASSPORT_JWKS_URL: 'https://api.soubiran.dev/unavailable-jwks' })).toBeNull()
   })
 
-  it('does not send Passport tokens to the interactive validator or accept malformed JWTs', async () => {
+  it('does not accept malformed JWTs', async () => {
     mockJwks()
     const handler = vi.fn(async () => new Response('OK'))
     const resource = protectedResource(CONTENT_RESOURCE, handler)
     const response = await resource.fetch(new Request(CONTENT_RESOURCE, { headers: { Authorization: 'Bearer malformed.jwt.token' } }), env, {} as ExecutionContext)
     expect(response.status).toBe(401)
     expect(handler).not.toHaveBeenCalled()
+  })
+})
+
+describe('Passport interactive resource tokens', () => {
+  const userClaims = {
+    aud: CONTENT_RESOURCE, iss: PASSPORT_ISSUER, sub: '42', scopes: [CONTENT_SCOPE],
+  }
+
+  it('accepts only Passport-issued resource-bound user tokens', async () => {
+    mockJwks()
+    const credential = await token(userClaims)
+    expect(await validatePassportToken(credential, CONTENT_RESOURCE, env)).toMatchObject({
+      audience: CONTENT_RESOURCE, props: { kind: 'interactive', scopes: [CONTENT_SCOPE] }, userId: '42',
+    })
+    expect(await validatePassportToken(credential, INFRA_RESOURCE, env)).toBeNull()
+    expect(await validatePassportToken(await token({ ...userClaims, aud: INFRA_RESOURCE, scopes: [INFRA_SCOPE] }), INFRA_RESOURCE, env)).toMatchObject({
+      props: { kind: 'interactive', scopes: [INFRA_SCOPE] },
+    })
+  })
+
+  it.each([
+    { iss: undefined }, { iss: 'https://attacker.test' }, { sub: '' },
+    { aud: 'ordinary-passport-client' }, { aud: [CONTENT_RESOURCE, INFRA_RESOURCE] },
+    { scopes: ['*'] }, { scopes: [INFRA_SCOPE] }, { scopes: undefined },
+    { exp: now - 1 }, { exp: now + 3600 }, { nbf: now + 60 },
+  ])('rejects incorrect user claims %j', async (claims) => {
+    mockJwks()
+    expect(await validatePassportToken(await token({ ...userClaims, ...claims }), CONTENT_RESOURCE, env)).toBeNull()
+  })
+
+  it('preserves the restricted first-party service path without accepting old Worker tokens', async () => {
+    mockJwks()
+    expect(await validatePassportToken(await token(), CONTENT_RESOURCE, env)).toMatchObject({ props: { kind: 'service' } })
+    expect(await validatePassportToken('old-worker-token', CONTENT_RESOURCE, env)).toBeNull()
+    expect(await validatePassportToken(await token({ sub: '42' }), CONTENT_RESOURCE, env)).toBeNull()
   })
 })
 
