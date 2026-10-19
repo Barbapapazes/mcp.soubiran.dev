@@ -73,7 +73,7 @@ function localLoader() {
 
 function register(loader = localLoader().loader) {
   const registerTool = vi.fn()
-  registerTopologyTools({ registerTool } as unknown as McpServer, { ...env, TOPOLOGY_LOADER: loader } as Env)
+  registerTopologyTools({ registerTool } as unknown as McpServer, { ...env, TOPOLOGY_LOADER: loader } as Env, { kind: 'interactive', scopes: ['mcp:infra:read'] })
   return { registerTool, run: registerTool.mock.calls[0]![2] }
 }
 

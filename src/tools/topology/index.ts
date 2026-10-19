@@ -1,6 +1,8 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { Principal } from '../../auth'
 import * as Sentry from '@sentry/cloudflare'
 import { z } from 'zod'
+import { requireTool } from '../../auth'
 import { createToolLogger, recordTool } from '../../telemetry'
 import { errorResult, textResult } from '../../utils'
 import { CodeExecutionError } from '../code-errors'
@@ -51,7 +53,7 @@ Examples:
 
 Filter, limit, and project only relevant fields rather than returning the full snapshot. Include revision, evidence and document URLs when explaining the topology. Code must be a single async arrow function returning a JSON-serializable value (maximum 256 KiB). topology is recursively frozen. The dynamic Worker has no network, secrets, storage, or bindings; CPU is limited to 50 ms, with a 5 second execution-response deadline.`
 
-export function registerTopologyTools(server: McpServer, env: Env) {
+export function registerTopologyTools(server: McpServer, env: Env, principal: Principal) {
   server.registerTool('query_topology', {
     description: `${queryTopologyDescription}\n\nSnapshot URL: ${env.TOPOLOGY_URL}`,
     annotations: { title: 'Explore infrastructure topology with code', readOnlyHint: true, destructiveHint: false, openWorldHint: true },
@@ -59,6 +61,7 @@ export function registerTopologyTools(server: McpServer, env: Env) {
       code: z.string().trim().min(1).max(20_000).describe('A single async JavaScript arrow function using the read-only topology object.'),
     },
   }, async ({ code }) => {
+    requireTool(principal, 'query_topology')
     const startedAt = performance.now()
     const log = createToolLogger()
     let topology

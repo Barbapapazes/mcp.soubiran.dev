@@ -1,7 +1,9 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { Principal } from '../../auth'
 import type { Page } from './pages'
 import * as Sentry from '@sentry/cloudflare'
 import { z } from 'zod'
+import { requireTool } from '../../auth'
 import { createToolLogger, recordTool } from '../../telemetry'
 import { errorResult, textResult } from '../../utils'
 import { errorMessage } from '../code-errors'
@@ -20,7 +22,7 @@ function summarizeExcerpt(text: string): string {
   return `${characters.slice(0, maxExcerptCharacters - 1).join('').trimEnd()}…`
 }
 
-export function registerSearchContentTool(server: McpServer, env: Env) {
+export function registerSearchContentTool(server: McpServer, env: Env, principal: Principal) {
   server.registerTool(
     'search_content',
     {
@@ -34,6 +36,7 @@ export function registerSearchContentTool(server: McpServer, env: Env) {
       },
     },
     async ({ query, locale, type, limit = maxSearchResults }) => {
+      requireTool(principal, 'search_content')
       const startedAt = performance.now()
       const log = createToolLogger()
       const searchStartedAt = performance.now()

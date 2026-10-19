@@ -1,29 +1,53 @@
+import type { Principal } from './auth'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import * as Sentry from '@sentry/cloudflare'
 import { createMcpHandler } from 'agents/mcp'
 import { createWorkersLogger } from 'evlog/workers'
 import { shapeError } from './error-context'
+import { CONTENT_RESOURCE, INFRA_RESOURCE } from './auth'
+import { authorizationServer, interactive, protectedResource } from './oauth'
 import { registerContentTools } from './tools/content'
 import { registerTopologyTools } from './tools/topology'
 import { SITE_URL } from './utils'
 
-function createServer(env: Env, topology: boolean) {
+function createServer(env: Env, topology: boolean, principal: Principal) {
   const server = new McpServer({
     name: topology ? 'Estéban\'s Infrastructure Topology MCP' : 'Estéban\'s MCP Server for soubiran.dev',
     version: '1.0.0',
   })
 
   if (topology)
-    registerTopologyTools(server, env)
+    registerTopologyTools(server, env, principal)
   else
-    registerContentTools(server, env)
+    registerContentTools(server, env, principal)
 
   return server
 }
 
+const serveMcp = async (request: Request, env: Env, ctx: ExecutionContext, principal: Principal) => {
+  const path = new URL(request.url).pathname
+  if (path !== '/mcp' && path !== '/infra/mcp')
+    return new Response('Not found', { status: 404 })
+  return createMcpHandler(createServer(env, path === '/infra/mcp', principal), {
+    corsOptions: { origin: env.CORS_ALLOWED_ORIGIN },
+    route: path,
+  })(request, env, ctx)
+}
+
+const contentResource = protectedResource(CONTENT_RESOURCE, serveMcp)
+const infraResource = protectedResource(INFRA_RESOURCE, serveMcp)
+
 export default Sentry.withSentry(
   env => ({
     dsn: env.SENTRY_DSN,
+    sendDefaultPii: false,
+    tracesSampleRate: 0,
+    beforeBreadcrumb: () => null,
+    beforeSend(event) {
+      delete event.request
+      delete event.breadcrumbs
+      return event
+    },
     dataCollection: {
       userInfo: false,
       httpBodies: [],
@@ -33,7 +57,7 @@ export default Sentry.withSentry(
     async fetch(request: Request, env: Env, ctx: ExecutionContext) {
       const url = new URL(request.url)
       const startedAt = performance.now()
-      const log = createWorkersLogger(request, { executionCtx: ctx })
+      const log = createWorkersLogger(new Request(`${url.origin}${url.pathname}`, { method: request.method }), { executionCtx: ctx })
 
       let response: Response
       let outcome: 'success' | 'http_error' | 'internal_error'
@@ -45,10 +69,19 @@ export default Sentry.withSentry(
           })
         }
         else if (url.pathname === '/mcp' || url.pathname === '/infra/mcp') {
-          response = await createMcpHandler(createServer(env, url.pathname === '/infra/mcp'), {
-            corsOptions: { origin: env.CORS_ALLOWED_ORIGIN },
-            route: url.pathname,
-          })(request, env, ctx)
+          response = await (url.pathname === '/infra/mcp' ? infraResource : contentResource).fetch(request, env, ctx)
+        }
+        else if (url.pathname === '/.well-known/oauth-protected-resource/mcp') {
+          response = await contentResource.fetch(request, env, ctx)
+        }
+        else if (url.pathname === '/.well-known/oauth-protected-resource/infra/mcp') {
+          response = await infraResource.fetch(request, env, ctx)
+        }
+        else if (url.pathname === '/authorize' || url.pathname === '/oauth/callback') {
+          response = await interactive(request, env)
+        }
+        else if (url.pathname.startsWith('/oauth/') || url.pathname.startsWith('/.well-known/oauth-authorization-server')) {
+          response = await authorizationServer.fetch(request, env, ctx)
         }
         else {
           response = Response.redirect(SITE_URL, 302)

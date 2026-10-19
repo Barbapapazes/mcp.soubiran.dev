@@ -1,6 +1,8 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { Principal } from '../../auth'
 import * as Sentry from '@sentry/cloudflare'
 import { z } from 'zod'
+import { requireTool } from '../../auth'
 import { createToolLogger, recordTool } from '../../telemetry'
 import { errorResult, textResult } from '../../utils'
 import { CodeExecutionError, errorMessage } from '../code-errors'
@@ -32,7 +34,7 @@ Examples:
 
 For a count, return a number with .length rather than listing pages and counting them in the conversation. Filter, sort, limit, and project only the fields needed for the question rather than returning the full catalog. Include id for get_page and url for source citations. Your code must be a single async arrow function and return a JSON-serializable value. The pages array is recursively frozen. Code has no network, secrets, storage, or Worker bindings.`
 
-export function registerListPagesTool(server: McpServer, env: Env) {
+export function registerListPagesTool(server: McpServer, env: Env, principal: Principal) {
   server.registerTool(
     'list_pages',
     {
@@ -43,6 +45,7 @@ export function registerListPagesTool(server: McpServer, env: Env) {
       },
     },
     async ({ code }) => {
+      requireTool(principal, 'list_pages')
       const startedAt = performance.now()
       const log = createToolLogger()
       let pages
