@@ -23,7 +23,7 @@ vi.mock('../src/tools/topology', () => ({ registerTopologyTools: vi.fn() }))
 const { registerContentTools } = await import('../src/tools/content')
 const { registerTopologyTools } = await import('../src/tools/topology')
 
-vi.mock('../src/auth', async (importOriginal) => ({
+vi.mock('../src/auth', async importOriginal => ({
   ...await importOriginal<typeof import('../src/auth')>(),
   validatePassportToken: vi.fn(),
 }))
@@ -36,13 +36,15 @@ const authenticated = (url: string) => new Request(url, { headers: { Authorizati
 
 beforeEach(() => {
   vi.clearAllMocks()
-  validateToken.mockImplementation(async (token, resource) => token === 'valid-passport-token' ? {
-    audience: resource,
-    scope: [resource.includes('/infra/') ? 'mcp:infra:read' : 'mcp:content:read'],
-    props: { kind: 'interactive', scopes: [resource.includes('/infra/') ? 'mcp:infra:read' : 'mcp:content:read'], expiresAt: Date.now() / 1000 + 300 },
-    expiresAt: Date.now() / 1000 + 300,
-    userId: 'user',
-  } : null)
+  validateToken.mockImplementation(async (token, resource) => token === 'valid-passport-token'
+    ? {
+        audience: resource,
+        scope: [resource.includes('/infra/') ? 'mcp:infra:read' : 'mcp:content:read'],
+        props: { kind: 'interactive', scopes: [resource.includes('/infra/') ? 'mcp:infra:read' : 'mcp:content:read'], expiresAt: Date.now() / 1000 + 300 },
+        expiresAt: Date.now() / 1000 + 300,
+        userId: 'user',
+      }
+    : null)
   handleMcp.mockResolvedValue(new Response('OK'))
 })
 
@@ -87,7 +89,8 @@ describe('worker requests', () => {
       route: '/internal/mcp',
     })
     expect(registerContentTools).toHaveBeenCalledWith(expect.anything(), env, {
-      kind: 'service', scopes: ['mcp:content:read'],
+      kind: 'service',
+      scopes: ['mcp:content:read'],
     })
     expect(registerTopologyTools).not.toHaveBeenCalled()
   })

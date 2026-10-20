@@ -32,7 +32,7 @@ export function protectedResource(resource: string, handler: (request: Request, 
         }), { headers })
       }
       const authorization = request.headers.get('Authorization')
-      const token = authorization?.match(/^Bearer ([^\s]+)$/i)?.[1]
+      const token = authorization?.match(/^Bearer (\S+)$/i)?.[1]
       const authenticated = token ? await validatePassportToken(token, resource, env) : null
       if (!authenticated) {
         headers.set('WWW-Authenticate', `Bearer resource_metadata="${metadataUrl}"${authorization ? ', error="invalid_token"' : ''}`)

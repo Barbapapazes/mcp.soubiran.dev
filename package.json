@@ -15,12 +15,12 @@
     "cf-typegen": "cf workers types"
   },
   "dependencies": {
-    "jose": "6.2.12",
     "@modelcontextprotocol/sdk": "1.32.1",
     "@sentry/cloudflare": "^10.76.2",
     "acorn": "^8.19.0",
     "agents": "^0.28.0",
     "evlog": "^2.31.0",
+    "jose": "6.2.12",
     "ofetch": "^1.5.1",
     "zod": "^4.6.6"
   },

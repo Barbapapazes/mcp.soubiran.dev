@@ -24,7 +24,7 @@ function createServer(env: Env, topology: boolean, principal: Principal) {
   return server
 }
 
-const serveMcp = async (request: Request, env: Env, ctx: ExecutionContext, principal: Principal) => {
+async function serveMcp(request: Request, env: Env, ctx: ExecutionContext, principal: Principal) {
   const path = new URL(request.url).pathname
   if (path !== '/mcp' && path !== '/infra/mcp' && path !== '/internal/mcp')
     return new Response('Not found', { status: 404 })

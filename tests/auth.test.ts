@@ -1,5 +1,5 @@
-import type { JWTPayload } from 'jose'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { JWTPayload } from 'jose'
 import { exportJWK, generateKeyPair, SignJWT } from 'jose'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { canUseTool, CONTENT_SCOPE, INFRA_SCOPE, validatePassportToken } from '../src/auth'
@@ -15,8 +15,14 @@ const now = Math.floor(Date.now() / 1000)
 
 async function token(overrides: JWTPayload = {}, algorithm = 'RS256', key = privateKey) {
   return new SignJWT({
-    aud: 'dedicated-assistant', sub: 'dedicated-assistant', scopes: [CONTENT_SCOPE],
-    iat: now, nbf: now - 1, exp: now + 299, jti: 'passport-token', ...overrides,
+    aud: 'dedicated-assistant',
+    sub: 'dedicated-assistant',
+    scopes: [CONTENT_SCOPE],
+    iat: now,
+    nbf: now - 1,
+    exp: now + 299,
+    jti: 'passport-token',
+    ...overrides,
   }).setProtectedHeader({ alg: algorithm }).sign(key)
 }
 
@@ -49,16 +55,21 @@ describe('public MCP authentication', () => {
   })
 })
 
-describe('Passport interactive resource tokens', () => {
+describe('passport interactive resource tokens', () => {
   const userClaims = {
-    aud: CONTENT_RESOURCE, iss: PASSPORT_ISSUER, sub: '42', scopes: [CONTENT_SCOPE],
+    aud: CONTENT_RESOURCE,
+    iss: PASSPORT_ISSUER,
+    sub: '42',
+    scopes: [CONTENT_SCOPE],
   }
 
   it('accepts only Passport-issued resource-bound user tokens', async () => {
     mockJwks()
     const credential = await token(userClaims)
     expect(await validatePassportToken(credential, CONTENT_RESOURCE, env)).toMatchObject({
-      audience: CONTENT_RESOURCE, props: { kind: 'interactive', scopes: [CONTENT_SCOPE] }, userId: '42',
+      audience: CONTENT_RESOURCE,
+      props: { kind: 'interactive', scopes: [CONTENT_SCOPE] },
+      userId: '42',
     })
     expect(await validatePassportToken(credential, INFRA_RESOURCE, env)).toBeNull()
     expect(await validatePassportToken(await token({ ...userClaims, aud: INFRA_RESOURCE, scopes: [INFRA_SCOPE] }), INFRA_RESOURCE, env)).toMatchObject({
@@ -67,11 +78,20 @@ describe('Passport interactive resource tokens', () => {
   })
 
   it.each([
-    { iss: undefined }, { iss: 'https://attacker.test' }, { sub: '' },
-    { aud: 'ordinary-passport-client' }, { aud: [CONTENT_RESOURCE, INFRA_RESOURCE] },
-    { scopes: ['*'] }, { scopes: [INFRA_SCOPE] }, { scopes: undefined },
-    { exp: now - 1 }, { exp: now + 3600 }, { nbf: now + 60 },
-    { exp: undefined }, { nbf: undefined }, { iat: now - 600 },
+    { iss: undefined },
+    { iss: 'https://attacker.test' },
+    { sub: '' },
+    { aud: 'ordinary-passport-client' },
+    { aud: [CONTENT_RESOURCE, INFRA_RESOURCE] },
+    { scopes: ['*'] },
+    { scopes: [INFRA_SCOPE] },
+    { scopes: undefined },
+    { exp: now - 1 },
+    { exp: now + 3600 },
+    { nbf: now + 60 },
+    { exp: undefined },
+    { nbf: undefined },
+    { iat: now - 600 },
   ])('rejects incorrect user claims %j', async (claims) => {
     mockJwks()
     expect(await validatePassportToken(await token({ ...userClaims, ...claims }), CONTENT_RESOURCE, env)).toBeNull()

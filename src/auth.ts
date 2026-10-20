@@ -67,8 +67,9 @@ export async function validatePassportToken(token: string, resource: string, env
       || typeof payload.sub !== 'string' || !payload.sub
       || typeof payload.iat !== 'number' || typeof payload.exp !== 'number'
       || payload.exp - payload.iat > 300
-      || !Array.isArray(payload.scopes) || payload.scopes.some(scope => scope !== allowed))
+      || !Array.isArray(payload.scopes) || payload.scopes.some(scope => scope !== allowed)) {
       return null
+    }
     return {
       audience: resource,
       expiresAt: payload.exp,

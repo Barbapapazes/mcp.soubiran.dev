@@ -3,7 +3,7 @@ import { CONTENT_SCOPE, INFRA_SCOPE } from '../src/auth'
 import { protectedResource } from '../src/resource-server'
 import { authEnv, CONTENT_RESOURCE, INFRA_RESOURCE, PASSPORT_ISSUER } from './auth-config'
 
-vi.mock('../src/auth', async (importOriginal) => ({
+vi.mock('../src/auth', async importOriginal => ({
   ...await importOriginal<typeof import('../src/auth')>(),
   validatePassportToken: vi.fn(),
 }))
@@ -22,7 +22,10 @@ it.each([
   const url = `https://mcp.soubiran.dev/.well-known/oauth-protected-resource${new URL(resource).pathname}`
   const response = await protectedResource(resource, handler).fetch(new Request(url), env, ctx)
   expect(await response.json()).toEqual({
-    resource, authorization_servers: [PASSPORT_ISSUER], scopes_supported: [scope], bearer_methods_supported: ['header'],
+    resource,
+    authorization_servers: [PASSPORT_ISSUER],
+    scopes_supported: [scope],
+    bearer_methods_supported: ['header'],
   })
   expect(validate).not.toHaveBeenCalled()
   expect(handler).not.toHaveBeenCalled()
