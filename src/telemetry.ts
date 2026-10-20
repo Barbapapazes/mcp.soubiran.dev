@@ -1,6 +1,7 @@
 import type { RequestLogger } from 'evlog'
 import { createLogger } from 'evlog'
 import { initWorkersLogger } from 'evlog/workers'
+import { shapeError } from './error-context'
 
 type ToolOutcome = 'success' | 'client_error' | 'upstream_error' | 'internal_error'
 
@@ -36,6 +37,7 @@ export function recordTool(
   startedAt: number,
   outcome: ToolOutcome,
   details: Record<string, unknown> = {},
+  error?: unknown,
 ) {
   if (outcome !== 'success')
     log.setLevel(outcome === 'client_error' ? 'warn' : 'error')
@@ -47,6 +49,7 @@ export function recordTool(
         outcome,
         durationMs: Math.round(performance.now() - startedAt),
         ...details,
+        ...(error !== undefined ? { error: shapeError(error) } : {}),
       }],
     },
   })

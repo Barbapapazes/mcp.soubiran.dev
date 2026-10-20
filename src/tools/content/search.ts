@@ -48,12 +48,12 @@ export function registerSearchContentTool(server: McpServer, env: Env) {
 
       if (search.status === 'rejected') {
         Sentry.captureException(search.reason)
-        recordTool(log, 'search_content', startedAt, 'upstream_error', { errorCode: 'CONTENT_SEARCH_FAILED' })
+        recordTool(log, 'search_content', startedAt, 'upstream_error', { errorCode: 'CONTENT_SEARCH_FAILED', instanceId: searchInstanceId }, search.reason)
         return errorResult(`Unable to search content: ${errorMessage(search.reason)}`)
       }
       if (pages.status === 'rejected') {
         Sentry.captureException(pages.reason)
-        recordTool(log, 'search_content', startedAt, 'upstream_error', { errorCode: 'CONTENT_DIRECTORY_RETRIEVAL_FAILED' })
+        recordTool(log, 'search_content', startedAt, 'upstream_error', { errorCode: 'CONTENT_DIRECTORY_RETRIEVAL_FAILED' }, pages.reason)
         return errorResult('Unable to retrieve the pages to resolve search results.')
       }
 

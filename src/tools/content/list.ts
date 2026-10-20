@@ -51,7 +51,7 @@ export function registerListPagesTool(server: McpServer, env: Env) {
       }
       catch (error) {
         Sentry.captureException(error)
-        recordTool(log, 'list_pages', startedAt, 'upstream_error', { errorCode: 'CONTENT_DIRECTORY_RETRIEVAL_FAILED' })
+        recordTool(log, 'list_pages', startedAt, 'upstream_error', { errorCode: 'CONTENT_DIRECTORY_RETRIEVAL_FAILED' }, error)
         return errorResult('Unable to retrieve the pages.')
       }
 
@@ -72,7 +72,7 @@ export function registerListPagesTool(server: McpServer, env: Env) {
         }
 
         Sentry.captureException(error)
-        recordTool(log, 'list_pages', startedAt, 'upstream_error', { input: { codeLength: code.length }, errorCode: 'CONTENT_CODE_EXECUTOR_FAILED' })
+        recordTool(log, 'list_pages', startedAt, 'upstream_error', { input: { codeLength: code.length }, errorCode: 'CONTENT_CODE_EXECUTOR_FAILED' }, error)
         return errorResult(`Unable to execute code against the pages: ${errorMessage(error)}`)
       }
     },

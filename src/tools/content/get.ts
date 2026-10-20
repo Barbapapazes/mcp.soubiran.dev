@@ -22,7 +22,7 @@ export function registerGetPageTool(server: McpServer, env: Env) {
       }
       catch (error) {
         Sentry.captureException(error)
-        recordTool(log, 'get_page', startedAt, 'upstream_error', { errorCode: 'CONTENT_DIRECTORY_RETRIEVAL_FAILED' })
+        recordTool(log, 'get_page', startedAt, 'upstream_error', { errorCode: 'CONTENT_DIRECTORY_RETRIEVAL_FAILED' }, error)
         return errorResult('Unable to retrieve the pages.')
       }
 
@@ -42,7 +42,7 @@ export function registerGetPageTool(server: McpServer, env: Env) {
       }
       catch (error) {
         Sentry.captureException(error)
-        recordTool(log, 'get_page', startedAt, 'upstream_error', { source: { category: 'pages' }, errorCode: 'CONTENT_RETRIEVAL_FAILED' })
+        recordTool(log, 'get_page', startedAt, 'upstream_error', { source: { category: 'pages' }, errorCode: 'CONTENT_RETRIEVAL_FAILED' }, error)
         return errorResult('Unable to retrieve the page content.')
       }
     },
