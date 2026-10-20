@@ -2,7 +2,7 @@ import type { JWTPayload } from 'jose'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { exportJWK, generateKeyPair, SignJWT } from 'jose'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { canUseTool, CONTENT_RESOURCE, CONTENT_SCOPE, INFRA_RESOURCE, INFRA_SCOPE, PASSPORT_ISSUER, validatePassportToken, validateServiceToken } from '../src/auth'
+import { canUseTool, CONTENT_RESOURCE, CONTENT_SCOPE, INFRA_RESOURCE, INFRA_SCOPE, PASSPORT_ISSUER, validatePassportToken } from '../src/auth'
 import { protectedResource } from '../src/resource-server'
 import { registerContentTools } from '../src/tools/content'
 import { registerTopologyTools } from '../src/tools/topology'
@@ -10,7 +10,6 @@ import { registerTopologyTools } from '../src/tools/topology'
 const { privateKey, publicKey } = await generateKeyPair('RS256')
 const jwk = { ...await exportJWK(publicKey), alg: 'RS256', use: 'sig' }
 const env = {
-  PASSPORT_SERVICE_CLIENT_ID: 'dedicated-assistant',
   PASSPORT_JWKS_URL: 'https://api.soubiran.dev/.well-known/jwks.json',
 } as Env
 const now = Math.floor(Date.now() / 1000)
@@ -30,46 +29,15 @@ function mockJwks() {
 
 afterEach(() => vi.unstubAllGlobals())
 
-describe('Passport service credentials', () => {
-  it('accepts the real Passport profile without iss or kid and caches the trusted JWKS', async () => {
-    const fetch = mockJwks()
-    const credential = await token()
-    expect(await validateServiceToken(credential, CONTENT_RESOURCE, env)).toMatchObject({
-      audience: CONTENT_RESOURCE, scope: [CONTENT_SCOPE], props: { kind: 'service' },
-    })
-    expect(await validateServiceToken(credential, CONTENT_RESOURCE, env)).not.toBeNull()
-    expect(fetch).toHaveBeenCalledTimes(1)
-    expect(String(fetch.mock.calls[0]?.[0])).toBe(env.PASSPORT_JWKS_URL)
-  })
-
-  it.each([
-    { aud: 'another-api-client' }, { aud: ['dedicated-assistant', 'another-client'] },
-    { sub: 'a-user' }, { scopes: [] }, { scopes: ['*'] },
-    { scopes: [CONTENT_SCOPE, 'mcp:infra:read'] }, { scope: CONTENT_SCOPE, scopes: undefined },
-    { exp: now - 1 }, { nbf: now + 100 }, { exp: undefined }, { nbf: undefined },
-    { iat: now - 600 }, { exp: now + 3600 }, { iss: 'https://attacker.test' },
-  ])('rejects invalid claims %j', async (claims) => {
+describe('public MCP authentication', () => {
+  it.each([CONTENT_RESOURCE, INFRA_RESOURCE])('rejects former service credentials on %s', async (resource) => {
     mockJwks()
-    expect(await validateServiceToken(await token(claims), CONTENT_RESOURCE, env)).toBeNull()
-  })
-
-  it('rejects a forged signature and a different algorithm', async () => {
-    mockJwks()
-    const other = await generateKeyPair('RS256')
-    expect(await validateServiceToken(await token({}, 'RS256', other.privateKey), CONTENT_RESOURCE, env)).toBeNull()
-    const ec = await generateKeyPair('ES256')
-    expect(await validateServiceToken(await token({}, 'ES256', ec.privateKey), CONTENT_RESOURCE, env)).toBeNull()
-  })
-
-  it('never accepts service tokens on the infrastructure resource', async () => {
-    const fetch = mockJwks()
-    expect(await validateServiceToken(await token(), INFRA_RESOURCE, env)).toBeNull()
-    expect(fetch).not.toHaveBeenCalled()
+    expect(await validatePassportToken(await token(), resource, env)).toBeNull()
   })
 
   it('fails closed when the JWKS cannot be obtained', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('offline') }))
-    expect(await validateServiceToken(await token(), CONTENT_RESOURCE, { ...env, PASSPORT_JWKS_URL: 'https://api.soubiran.dev/unavailable-jwks' })).toBeNull()
+    expect(await validatePassportToken(await token({ aud: CONTENT_RESOURCE, iss: PASSPORT_ISSUER, sub: '42' }), CONTENT_RESOURCE, { ...env, PASSPORT_JWKS_URL: 'https://api.soubiran.dev/unavailable-jwks' })).toBeNull()
   })
 
   it('does not accept malformed JWTs', async () => {
@@ -104,16 +72,34 @@ describe('Passport interactive resource tokens', () => {
     { aud: 'ordinary-passport-client' }, { aud: [CONTENT_RESOURCE, INFRA_RESOURCE] },
     { scopes: ['*'] }, { scopes: [INFRA_SCOPE] }, { scopes: undefined },
     { exp: now - 1 }, { exp: now + 3600 }, { nbf: now + 60 },
+    { exp: undefined }, { nbf: undefined }, { iat: now - 600 },
   ])('rejects incorrect user claims %j', async (claims) => {
     mockJwks()
     expect(await validatePassportToken(await token({ ...userClaims, ...claims }), CONTENT_RESOURCE, env)).toBeNull()
   })
 
-  it('preserves the restricted first-party service path without accepting old Worker tokens', async () => {
+  it('rejects old Worker tokens and ordinary Passport user tokens', async () => {
     mockJwks()
-    expect(await validatePassportToken(await token(), CONTENT_RESOURCE, env)).toMatchObject({ props: { kind: 'service' } })
     expect(await validatePassportToken('old-worker-token', CONTENT_RESOURCE, env)).toBeNull()
     expect(await validatePassportToken(await token({ sub: '42' }), CONTENT_RESOURCE, env)).toBeNull()
+  })
+
+  it('rejects forged signatures and other signing algorithms', async () => {
+    mockJwks()
+    const other = await generateKeyPair('RS256')
+    expect(await validatePassportToken(await token(userClaims, 'RS256', other.privateKey), CONTENT_RESOURCE, env)).toBeNull()
+    const ec = await generateKeyPair('ES256')
+    expect(await validatePassportToken(await token(userClaims, 'ES256', ec.privateKey), CONTENT_RESOURCE, env)).toBeNull()
+  })
+
+  it('caches keys fetched only from the configured trusted JWKS URL', async () => {
+    const fetch = mockJwks()
+    const configured = { ...env, PASSPORT_JWKS_URL: 'https://api.soubiran.dev/cache-test-jwks' }
+    const credential = await token(userClaims)
+    expect(await validatePassportToken(credential, CONTENT_RESOURCE, configured)).not.toBeNull()
+    expect(await validatePassportToken(credential, CONTENT_RESOURCE, configured)).not.toBeNull()
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(String(fetch.mock.calls[0]?.[0])).toBe(configured.PASSPORT_JWKS_URL)
   })
 })
 

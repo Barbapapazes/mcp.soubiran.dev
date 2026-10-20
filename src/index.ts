@@ -3,8 +3,8 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import * as Sentry from '@sentry/cloudflare'
 import { createMcpHandler } from 'agents/mcp'
 import { createWorkersLogger } from 'evlog/workers'
+import { CONTENT_RESOURCE, CONTENT_SCOPE, INFRA_RESOURCE } from './auth'
 import { shapeError } from './error-context'
-import { CONTENT_RESOURCE, INFRA_RESOURCE } from './auth'
 import { protectedResource } from './resource-server'
 import { registerContentTools } from './tools/content'
 import { registerTopologyTools } from './tools/topology'
@@ -26,7 +26,7 @@ function createServer(env: Env, topology: boolean, principal: Principal) {
 
 const serveMcp = async (request: Request, env: Env, ctx: ExecutionContext, principal: Principal) => {
   const path = new URL(request.url).pathname
-  if (path !== '/mcp' && path !== '/infra/mcp')
+  if (path !== '/mcp' && path !== '/infra/mcp' && path !== '/internal/mcp')
     return new Response('Not found', { status: 404 })
   return createMcpHandler(createServer(env, path === '/infra/mcp', principal), {
     corsOptions: { origin: env.CORS_ALLOWED_ORIGIN },
@@ -68,6 +68,12 @@ export default Sentry.withSentry(
             headers: { 'Content-Type': 'text/plain; charset=utf-8' },
           })
         }
+        else if (url.pathname === '/internal/mcp') {
+          response = await serveMcp(request, env, ctx, { kind: 'service', scopes: [CONTENT_SCOPE] })
+        }
+        else if (url.pathname.startsWith('/internal/')) {
+          response = new Response('Not found', { status: 404 })
+        }
         else if (url.pathname === '/mcp' || url.pathname === '/infra/mcp') {
           response = await (url.pathname === '/infra/mcp' ? infraResource : contentResource).fetch(request, env, ctx)
         }
@@ -95,7 +101,7 @@ export default Sentry.withSentry(
 
       log.set({
         request: { durationMs: Math.round(performance.now() - startedAt) },
-        mcp: { route: url.pathname === '/mcp' || url.pathname === '/infra/mcp', outcome },
+        mcp: { route: url.pathname === '/mcp' || url.pathname === '/infra/mcp' || url.pathname === '/internal/mcp', outcome },
       })
       log.emit()
       return response

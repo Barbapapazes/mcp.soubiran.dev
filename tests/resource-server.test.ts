@@ -57,8 +57,8 @@ it('returns insufficient_scope for an authenticated user without the required pe
   expect(handler).not.toHaveBeenCalled()
 })
 
-it('never permits a service principal on the infrastructure endpoint', async () => {
-  validate.mockResolvedValue({ audience: INFRA_RESOURCE, expiresAt: Date.now() / 1000 + 60, scope: [INFRA_SCOPE], props: { kind: 'service', scopes: [INFRA_SCOPE] }, userId: 'client' })
+it('does not permit a content-only principal on the infrastructure endpoint', async () => {
+  validate.mockResolvedValue({ audience: INFRA_RESOURCE, expiresAt: Date.now() / 1000 + 60, scope: [CONTENT_SCOPE], props: { kind: 'interactive', scopes: [CONTENT_SCOPE] }, userId: '42' })
   const handler = vi.fn()
   const response = await protectedResource(INFRA_RESOURCE, handler).fetch(new Request(INFRA_RESOURCE, { headers: { Authorization: 'Bearer passport-token' } }), env, ctx)
   expect(response.status).toBe(403)

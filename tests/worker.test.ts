@@ -59,6 +59,38 @@ describe('worker requests', () => {
     expect(createMcpHandler).not.toHaveBeenCalled()
   })
 
+  it('serves internal content MCP without inspecting Access or OAuth credentials', async () => {
+    const response = await worker.fetch!(new Request('https://mcp.soubiran.dev/internal/mcp'), env, ctx)
+    expect(response.status).toBe(200)
+    expect(validateToken).not.toHaveBeenCalled()
+    expect(createMcpHandler).toHaveBeenCalledWith(expect.anything(), {
+      corsOptions: { origin: env.CORS_ALLOWED_ORIGIN },
+      route: '/internal/mcp',
+    })
+    expect(registerContentTools).toHaveBeenCalledWith(expect.anything(), env, {
+      kind: 'service', scopes: ['mcp:content:read'],
+    })
+    expect(registerTopologyTools).not.toHaveBeenCalled()
+  })
+
+  it.each(['/internal/infra/mcp', '/internal/mcp/extra'])('does not expose other internal tools at %s', async (path) => {
+    const response = await worker.fetch!(new Request(`https://mcp.soubiran.dev${path}`), env, ctx)
+    expect(response.status).toBe(404)
+    expect(createMcpHandler).not.toHaveBeenCalled()
+  })
+
+  it.each(['/mcp', '/infra/mcp'])('does not let Access headers bypass OAuth on %s', async (path) => {
+    const response = await worker.fetch!(new Request(`https://mcp.soubiran.dev${path}`, {
+      headers: {
+        'CF-Access-Client-Id': 'edge-identity',
+        'CF-Access-Client-Secret': 'edge-secret',
+        'Cf-Access-Jwt-Assertion': 'edge-assertion',
+      },
+    }), env, ctx)
+    expect(response.status).toBe(401)
+    expect(createMcpHandler).not.toHaveBeenCalled()
+  })
+
   it('serves the exact OpenAI domain verification token as plain text', async () => {
     const response = await worker.fetch!(new Request('https://mcp.soubiran.dev/.well-known/openai-apps-challenge'), env, ctx)
     expect(response.status).toBe(200)

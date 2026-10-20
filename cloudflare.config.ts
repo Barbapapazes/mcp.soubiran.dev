@@ -8,6 +8,7 @@ export default defineConfig({
       'nodejs_compat',
     ],
     entrypoint: 'src/index.ts',
+    workersDev: false,
     // Branch versions must not expose public endpoints with production bindings.
     previewUrls: false,
     observability: {
@@ -42,7 +43,6 @@ export default defineConfig({
       // @sentry/cloudflare uses this binding's id as the default release.
       CF_VERSION_METADATA: bindings.versionMetadata(),
       PASSPORT_JWKS_URL: bindings.text('https://api.soubiran.dev/.well-known/jwks.json'),
-      PASSPORT_SERVICE_CLIENT_ID: bindings.secret(),
     },
   },
 })

@@ -44,9 +44,6 @@ function trustedKeys(env: Env) {
 }
 
 export async function validatePassportToken(token: string, resource: string, env: Env) {
-  const service = await validateServiceToken(token, resource, env)
-  if (service)
-    return service
   if (resource !== CONTENT_RESOURCE && resource !== INFRA_RESOURCE)
     return null
   try {
@@ -73,42 +70,6 @@ export async function validatePassportToken(token: string, resource: string, env
       expiresAt: payload.exp,
       scope: payload.scopes as string[],
       props: { kind: 'interactive', scopes: payload.scopes as string[], expiresAt: payload.exp } satisfies Principal,
-      userId: payload.sub,
-    }
-  }
-  catch {
-    return null
-  }
-}
-
-export async function validateServiceToken(token: string, resource: string, env: Env) {
-  // Explicit first-party exception for Passport's native client-id audience.
-  if (resource !== CONTENT_RESOURCE || !env.PASSPORT_SERVICE_CLIENT_ID)
-    return null
-  try {
-    const { payload } = await jwtVerify(token, trustedKeys(env), {
-      algorithms: ['RS256'],
-      audience: env.PASSPORT_SERVICE_CLIENT_ID,
-      requiredClaims: ['aud', 'sub', 'iat', 'nbf', 'exp', 'jti', 'scopes'],
-      maxTokenAge: '5m',
-      clockTolerance: 0,
-    })
-    // Passport 13 / League 9.4: aud is the OAuth client, sub is the client for
-    // client_credentials, scopes is an array, and iss / kid are not emitted.
-    const audiences = Array.isArray(payload.aud) ? payload.aud : [payload.aud]
-    if (audiences.length !== 1 || audiences[0] !== env.PASSPORT_SERVICE_CLIENT_ID
-      || payload.sub !== env.PASSPORT_SERVICE_CLIENT_ID
-      || payload.iss !== undefined
-      || typeof payload.iat !== 'number' || typeof payload.exp !== 'number'
-      || payload.exp - payload.iat > 300
-      || !Array.isArray(payload.scopes) || payload.scopes.length !== 1 || payload.scopes[0] !== CONTENT_SCOPE)
-      return null
-    return {
-      audience: CONTENT_RESOURCE,
-      expiresAt: payload.exp,
-      scope: [CONTENT_SCOPE],
-      props: { kind: 'service', scopes: [CONTENT_SCOPE], expiresAt: payload.exp } satisfies Principal,
-      clientId: env.PASSPORT_SERVICE_CLIENT_ID,
       userId: payload.sub,
     }
   }
