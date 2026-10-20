@@ -54,7 +54,7 @@ export async function loadRemoteText(url: string, label: string, accept: string)
 
   try {
     return await Promise.race([
-      ofetch<string>(url, { headers: { Accept: accept }, responseType: 'text', signal: controller.signal, retry: 0 }),
+      ofetch(url, { headers: { Accept: accept }, responseType: 'text', signal: controller.signal, retry: 0 }),
       deadline,
     ])
   }

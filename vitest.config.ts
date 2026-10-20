@@ -2,6 +2,10 @@ import { cloudflareTest } from '@cloudflare/vitest-plugin'
 import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
+  test: {
+    // The first entrypoint request also transforms the Worker dependency graph.
+    testTimeout: 30_000,
+  },
   plugins: [
     cloudflareTest({
       main: './src/index.ts',

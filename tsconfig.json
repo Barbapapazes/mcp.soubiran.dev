@@ -1,7 +1,6 @@
 {
   "compilerOptions": {
     "target": "es2022",
-    "types": ["@cloudflare/vitest-plugin/types"],
     "jsx": "react-jsx",
     "lib": [
       "es2022"
@@ -9,6 +8,7 @@
     "module": "es2022",
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
+    "types": ["@cloudflare/vitest-plugin/types"],
     "allowJs": true,
     "checkJs": false,
     "strict": true,

@@ -17,7 +17,10 @@ describe('remote document diagnostics', () => {
     const fetch = vi.fn(async () => new Response('Unavailable', { status }))
     vi.stubGlobal('fetch', fetch)
     await expect(loadPagesFeed(feedUrl)).rejects.toMatchObject({
-      name: 'RemoteDocumentError', kind: 'http', status, url: feedUrl,
+      name: 'RemoteDocumentError',
+      kind: 'http',
+      status,
+      url: feedUrl,
       message: `The pages feed request to ${feedUrl} failed with HTTP ${status}.`,
       cause: expect.any(Error),
     })
@@ -31,7 +34,9 @@ describe('remote document diagnostics', () => {
     vi.stubGlobal('fetch', async () => new Response(JSON.stringify({ data: [123] })))
     await expect(loadRemoteJson(feedUrl, 'pages feed', schema)).rejects.toMatchObject({ kind: 'schema', cause: expect.any(z.ZodError) })
 
-    vi.stubGlobal('fetch', async () => { throw new TypeError('Connection failed') })
+    vi.stubGlobal('fetch', async () => {
+      throw new TypeError('Connection failed')
+    })
     await expect(loadRemoteJson(feedUrl, 'pages feed', schema)).rejects.toMatchObject({ kind: 'network', cause: expect.any(Error) })
   })
 
@@ -48,7 +53,7 @@ describe('remote document diagnostics', () => {
   })
 
   it('applies diagnostics to the topology loader without changing its schema', async () => {
-    const env = { TOPOLOGY_URL: 'https://example.com/topology.json' } as Env
+    const env = { TOPOLOGY_URL: 'https://example.com/topology.json' } as unknown as Env
     vi.stubGlobal('fetch', async () => new Response('Missing', { status: 404 }))
     await expect(loadTopology(env)).rejects.toMatchObject({ kind: 'http', status: 404, url: env.TOPOLOGY_URL })
     vi.stubGlobal('fetch', async () => new Response(JSON.stringify({ schemaVersion: 2 })))
@@ -56,7 +61,7 @@ describe('remote document diagnostics', () => {
   })
 
   it('does not cache a failed feed request or poison later tool calls', async () => {
-    const env = { PAGES_EN_URL: feedUrl, PAGES_FR_URL: 'https://example.com/pages.fr.json' } as Env
+    const env = { PAGES_EN_URL: feedUrl, PAGES_FR_URL: 'https://example.com/pages.fr.json' } as unknown as Env
     vi.stubGlobal('fetch', async () => new Response('Unavailable', { status: 503 }))
     await expect(loadPages(env)).rejects.toMatchObject({ kind: 'http' })
     vi.stubGlobal('fetch', async () => new Response('[]'))
@@ -99,7 +104,8 @@ describe('remote document deadlines', () => {
     const page = { id: 'page', locale: 'en' as const, type: 'page', title: 'Page', url: 'https://example.com/page', markdownUrl: 'https://example.com/page.md' }
     await expect(retrievePage(page)).resolves.toBe('# Page')
     expect(fetch).toHaveBeenCalledWith(page.markdownUrl, expect.objectContaining({
-      headers: expect.any(Headers), signal: expect.any(AbortSignal),
+      headers: expect.any(Headers),
+      signal: expect.any(AbortSignal),
     }))
     expect(vi.getTimerCount()).toBe(0)
   })
