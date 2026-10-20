@@ -30,6 +30,7 @@ export default defineConfig({
       PAGES_EN_URL: bindings.text('https://beta.soubiran.dev/pages.en.json'),
       PAGES_FR_URL: bindings.text('https://beta.soubiran.dev/pages.fr.json'),
       CORS_ALLOWED_ORIGIN: bindings.text('http://localhost:3000'),
+      MCP_PUBLIC_ORIGIN: bindings.text('http://localhost:8787'),
       AI_SEARCH: bindings.aiSearchNamespace({
         namespace: 'soubiran-dev',
         dev: {
@@ -42,7 +43,8 @@ export default defineConfig({
       SENTRY_DSN: bindings.secret(),
       // @sentry/cloudflare uses this binding's id as the default release.
       CF_VERSION_METADATA: bindings.versionMetadata(),
-      PASSPORT_JWKS_URL: bindings.text('https://api.soubiran.dev/.well-known/jwks.json'),
+      PASSPORT_ISSUER: bindings.text('http://localhost:8000'),
+      PASSPORT_JWKS_URL: bindings.text('http://localhost:8000/.well-known/jwks.json'),
     },
   },
 })

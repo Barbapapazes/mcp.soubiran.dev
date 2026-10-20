@@ -1,12 +1,13 @@
 import type { Principal } from './auth'
-import { CONTENT_RESOURCE, CONTENT_SCOPE, INFRA_RESOURCE, INFRA_SCOPE, ISSUER, PASSPORT_ISSUER, validatePassportToken } from './auth'
+import { CONTENT_SCOPE, getAuthConfig, INFRA_SCOPE, validatePassportToken } from './auth'
 
 // This Worker is only a resource server. Passport owns authorization and tokens.
 export function protectedResource(resource: string, handler: (request: Request, env: Env, ctx: ExecutionContext, principal: Principal) => Promise<Response>) {
-  const required = resource === INFRA_RESOURCE ? INFRA_SCOPE : CONTENT_SCOPE
-  const metadataUrl = `${ISSUER}/.well-known/oauth-protected-resource${new URL(resource).pathname}`
   return {
     async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+      const { infraResource, passportIssuer } = getAuthConfig(env)
+      const required = resource === infraResource ? INFRA_SCOPE : CONTENT_SCOPE
+      const metadataUrl = new URL(`/.well-known/oauth-protected-resource${new URL(resource).pathname}`, env.MCP_PUBLIC_ORIGIN).href
       const headers = new Headers({
         'Access-Control-Allow-Origin': env.CORS_ALLOWED_ORIGIN,
         'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
@@ -25,7 +26,7 @@ export function protectedResource(resource: string, handler: (request: Request, 
         headers.set('Content-Type', 'application/json')
         return new Response(JSON.stringify({
           resource,
-          authorization_servers: [PASSPORT_ISSUER],
+          authorization_servers: [passportIssuer],
           scopes_supported: [required],
           bearer_methods_supported: ['header'],
         }), { headers })
@@ -38,7 +39,7 @@ export function protectedResource(resource: string, handler: (request: Request, 
         return new Response('Unauthorized', { status: 401, headers })
       }
       if (!authenticated.props.scopes.includes(required)
-        || (resource === INFRA_RESOURCE && authenticated.props.kind !== 'interactive')) {
+        || (resource === infraResource && authenticated.props.kind !== 'interactive')) {
         headers.set('WWW-Authenticate', `Bearer error="insufficient_scope", scope="${required}", resource_metadata="${metadataUrl}"`)
         return new Response('Forbidden', { status: 403, headers })
       }

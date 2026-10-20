@@ -2,11 +2,13 @@ import { createRemoteJWKSet, jwtVerify } from 'jose'
 
 export const CONTENT_SCOPE = 'mcp:content:read'
 export const INFRA_SCOPE = 'mcp:infra:read'
-// ISSUER is the resource origin, not an authorization server.
-export const ISSUER = 'https://mcp.soubiran.dev'
-export const PASSPORT_ISSUER = 'https://api.soubiran.dev'
-export const CONTENT_RESOURCE = `${ISSUER}/mcp`
-export const INFRA_RESOURCE = `${ISSUER}/infra/mcp`
+export function getAuthConfig(env: Env) {
+  return {
+    contentResource: new URL('/mcp', env.MCP_PUBLIC_ORIGIN).href,
+    infraResource: new URL('/infra/mcp', env.MCP_PUBLIC_ORIGIN).href,
+    passportIssuer: env.PASSPORT_ISSUER,
+  }
+}
 
 export interface Principal {
   kind: 'interactive' | 'service'
@@ -33,7 +35,8 @@ const keySets = new Map<string, ReturnType<typeof createRemoteJWKSet>>()
 
 function trustedKeys(env: Env) {
   const url = new URL(env.PASSPORT_JWKS_URL)
-  if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash)
+  const loopback = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)
+  if ((url.protocol !== 'https:' && !(url.protocol === 'http:' && loopback)) || url.username || url.password || url.search || url.hash)
     throw new Error('Invalid JWKS URL')
   let keys = keySets.get(url.href)
   if (!keys) {
@@ -44,21 +47,22 @@ function trustedKeys(env: Env) {
 }
 
 export async function validatePassportToken(token: string, resource: string, env: Env) {
-  if (resource !== CONTENT_RESOURCE && resource !== INFRA_RESOURCE)
+  const { contentResource, infraResource, passportIssuer } = getAuthConfig(env)
+  if (resource !== contentResource && resource !== infraResource)
     return null
   try {
     // Interactive tokens require Passport's MCP resource-token extension.
     // Stock Passport's client-id audience is deliberately NOT accepted here.
     const { payload } = await jwtVerify(token, trustedKeys(env), {
       algorithms: ['RS256'],
-      issuer: PASSPORT_ISSUER,
+      issuer: passportIssuer,
       audience: resource,
       requiredClaims: ['iss', 'aud', 'sub', 'iat', 'nbf', 'exp', 'jti', 'scopes'],
       maxTokenAge: '5m',
       clockTolerance: 0,
     })
     const audiences = Array.isArray(payload.aud) ? payload.aud : [payload.aud]
-    const allowed = resource === INFRA_RESOURCE ? INFRA_SCOPE : CONTENT_SCOPE
+    const allowed = resource === infraResource ? INFRA_SCOPE : CONTENT_SCOPE
     if (audiences.length !== 1 || audiences[0] !== resource
       || typeof payload.sub !== 'string' || !payload.sub
       || typeof payload.iat !== 'number' || typeof payload.exp !== 'number'

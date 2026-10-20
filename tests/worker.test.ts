@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { authEnv } from './auth-config'
 
 const { captureException, handleMcp, createMcpHandler, log } = vi.hoisted(() => {
   const handleMcp = vi.fn()
@@ -29,7 +30,7 @@ vi.mock('../src/auth', async (importOriginal) => ({
 const { validatePassportToken } = await import('../src/auth')
 const validateToken = vi.mocked(validatePassportToken)
 const { default: worker } = await import('../src/index')
-const env = { CORS_ALLOWED_ORIGIN: 'https://example.com' } as unknown as Env
+const env = { ...authEnv, CORS_ALLOWED_ORIGIN: 'https://example.com' } as unknown as Env
 const ctx = {} as ExecutionContext
 const authenticated = (url: string) => new Request(url, { headers: { Authorization: 'Bearer valid-passport-token' } })
 
@@ -38,7 +39,7 @@ beforeEach(() => {
   validateToken.mockImplementation(async (token, resource) => token === 'valid-passport-token' ? {
     audience: resource,
     scope: [resource.includes('/infra/') ? 'mcp:infra:read' : 'mcp:content:read'],
-    props: { kind: 'interactive', scopes: [resource.includes('/infra/') ? 'mcp:infra:read' : 'mcp:content:read'] },
+    props: { kind: 'interactive', scopes: [resource.includes('/infra/') ? 'mcp:infra:read' : 'mcp:content:read'], expiresAt: Date.now() / 1000 + 300 },
     expiresAt: Date.now() / 1000 + 300,
     userId: 'user',
   } : null)
@@ -57,6 +58,24 @@ describe('worker requests', () => {
     expect(response.status).toBe(404)
     expect(validateToken).not.toHaveBeenCalled()
     expect(createMcpHandler).not.toHaveBeenCalled()
+  })
+
+  it.each(['/mcp', '/infra/mcp'])('advertises local resource and authorization server metadata for %s', async (path) => {
+    const local = {
+      ...env,
+      MCP_PUBLIC_ORIGIN: 'http://localhost:8787',
+      PASSPORT_ISSUER: 'http://localhost:8000',
+    } as unknown as Env
+    const request = new Request(`http://localhost:8787${path}`)
+    const response = await worker.fetch!(request, local, ctx)
+    const metadataUrl = `http://localhost:8787/.well-known/oauth-protected-resource${path}`
+    expect(response.status).toBe(401)
+    expect(response.headers.get('WWW-Authenticate')).toContain(`resource_metadata="${metadataUrl}"`)
+    const metadata = await worker.fetch!(new Request(metadataUrl), local, ctx)
+    expect(await metadata.json()).toMatchObject({
+      resource: `http://localhost:8787${path}`,
+      authorization_servers: ['http://localhost:8000'],
+    })
   })
 
   it('serves internal content MCP without inspecting Access or OAuth credentials', async () => {

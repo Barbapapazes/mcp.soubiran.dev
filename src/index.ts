@@ -3,7 +3,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import * as Sentry from '@sentry/cloudflare'
 import { createMcpHandler } from 'agents/mcp'
 import { createWorkersLogger } from 'evlog/workers'
-import { CONTENT_RESOURCE, CONTENT_SCOPE, INFRA_RESOURCE } from './auth'
+import { CONTENT_SCOPE, getAuthConfig } from './auth'
 import { shapeError } from './error-context'
 import { protectedResource } from './resource-server'
 import { registerContentTools } from './tools/content'
@@ -34,9 +34,6 @@ const serveMcp = async (request: Request, env: Env, ctx: ExecutionContext, princ
   })(request, env, ctx)
 }
 
-const contentResource = protectedResource(CONTENT_RESOURCE, serveMcp)
-const infraResource = protectedResource(INFRA_RESOURCE, serveMcp)
-
 export default Sentry.withSentry(
   env => ({
     dsn: env.SENTRY_DSN,
@@ -56,6 +53,9 @@ export default Sentry.withSentry(
   {
     async fetch(request: Request, env: Env, ctx: ExecutionContext) {
       const url = new URL(request.url)
+      const resources = getAuthConfig(env)
+      const contentResource = protectedResource(resources.contentResource, serveMcp)
+      const infraResource = protectedResource(resources.infraResource, serveMcp)
       const startedAt = performance.now()
       const log = createWorkersLogger(new Request(`${url.origin}${url.pathname}`, { method: request.method }), { executionCtx: ctx })
 
