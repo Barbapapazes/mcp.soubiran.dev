@@ -174,7 +174,10 @@ describe('worker requests', () => {
     expect(await response.text()).toBe('Internal Server Error')
     expect(captureException).toHaveBeenCalledWith(error)
     expect(log.setLevel).toHaveBeenCalledWith('error')
-    expect(log.set).toHaveBeenCalledWith({ mcp: { errorCode: 'MCP_HANDLER_FAILED' } })
+    expect(log.set).toHaveBeenCalledWith({ mcp: {
+      errorCode: 'MCP_HANDLER_FAILED',
+      error: { name: 'Error', message: 'Handler failed' },
+    } })
     expect(log.set).toHaveBeenLastCalledWith({
       request: { durationMs: expect.any(Number) },
       mcp: { route: true, outcome: 'internal_error' },

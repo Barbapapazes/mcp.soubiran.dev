@@ -41,7 +41,9 @@ describe('public MCP authentication', () => {
   })
 
   it('fails closed when the JWKS cannot be obtained', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('offline') }))
+    vi.stubGlobal('fetch', vi.fn(async () => {
+      throw new Error('offline')
+    }))
     expect(await validatePassportToken(await token({ aud: CONTENT_RESOURCE, iss: PASSPORT_ISSUER, sub: '42' }), CONTENT_RESOURCE, { ...env, PASSPORT_JWKS_URL: 'https://api.soubiran.dev/unavailable-jwks' } as unknown as Env)).toBeNull()
   })
 
