@@ -8,6 +8,7 @@
     "module": "es2022",
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
+    "types": ["@cloudflare/vitest-plugin/types"],
     "allowJs": true,
     "checkJs": false,
     "strict": true,
@@ -21,6 +22,7 @@
     ".cloudflare/types/index.d.ts",
     "cloudflare.config.ts",
     "wrangler.config.ts",
+    "vitest.config.ts",
     "src/**/*.ts",
     "tests/**/*.ts"
   ]

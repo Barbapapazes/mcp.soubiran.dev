@@ -50,7 +50,9 @@ describe('error context', () => {
     expect(shapeError('Failure')).toEqual({ message: 'Failure' })
     expect(shapeError({ message: 'x'.repeat(1_000), status: 502 }).message).toHaveLength(512)
     expect(shapeError({ message: { secret: true }, status: { secret: true } })).toEqual({ message: 'Unexpected error.' })
-    const hostile = new Proxy({}, { get() { throw new Error('Getter failed') } })
+    const hostile = new Proxy({}, { get() {
+      throw new Error('Getter failed')
+    } })
     expect(shapeError(hostile)).toEqual({ message: 'Unexpected error.' })
   })
 })

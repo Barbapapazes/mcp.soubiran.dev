@@ -25,10 +25,10 @@
   },
   "devDependencies": {
     "@antfu/eslint-config": "^5.4.1",
+    "@cloudflare/vitest-plugin": "^1.4.4",
     "@types/node": "^24.19.2",
     "cf": "1.0.0-beta.14",
     "eslint": "^9.39.5",
-    "miniflare": "^3.20250718.3",
     "taze": "^19.17.2",
     "typescript": "^5.9.3",
     "vitest": "^4.1.11",
