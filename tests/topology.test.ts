@@ -51,7 +51,7 @@ const snapshot = {
     ecosystem: [],
   }],
 }
-const env = { TOPOLOGY_URL: 'https://beta.soubiran.dev/infra/topology.json' } as Env
+const env = { TOPOLOGY_URL: 'https://beta.soubiran.dev/infra/topology.json' } as unknown as Env
 
 function mockFeed(value: unknown = snapshot) {
   const fetch = vi.fn(async (_input: string | URL | Request) => new Response(JSON.stringify(value), { headers: { 'Content-Type': 'application/json' } }))

@@ -4,13 +4,13 @@
   "private": true,
   "packageManager": "pnpm@10.34.6",
   "scripts": {
-    "deploy": "cf deploy",
-    "deploy:version": "cf workers versions create",
-    "dev": "cf dev",
+    "deploy": "cf deploy --mode production",
+    "deploy:version": "cf workers versions create --mode production",
+    "dev": "cf dev --mode development",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
     "plugin:package": "python3 scripts/package-plugin.py",
-    "start": "cf dev",
+    "start": "cf dev --mode development",
     "test": "vitest run",
     "cf-typegen": "cf workers types"
   },

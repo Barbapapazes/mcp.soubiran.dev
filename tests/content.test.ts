@@ -24,7 +24,7 @@ const frenchPage = { ...page, id: 'posts/fr/page.md', locale: 'fr', url: '/fr/po
 const env = {
   PAGES_EN_URL: 'https://beta.soubiran.dev/pages.en.json',
   PAGES_FR_URL: 'https://beta.soubiran.dev/pages.fr.json',
-} as Env
+} as unknown as Env
 
 function mockFeeds(en = [page], fr = [frenchPage]) {
   const fetch = vi.fn(async (input: string | URL | Request) => new Response(JSON.stringify(input.toString().endsWith('pages.fr.json') ? fr : en), { headers: { 'Content-Type': 'application/json' } }))
