@@ -4,13 +4,13 @@
   "private": true,
   "packageManager": "pnpm@10.34.6",
   "scripts": {
-    "deploy": "cf deploy",
-    "deploy:version": "cf workers versions create",
-    "dev": "cf dev",
+    "deploy": "cf deploy --mode production",
+    "deploy:version": "cf workers versions create --mode production",
+    "dev": "cf dev --mode development",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
     "plugin:package": "python3 scripts/package-plugin.py",
-    "start": "cf dev",
+    "start": "cf dev --mode development",
     "test": "vitest run",
     "cf-typegen": "cf workers types"
   },
@@ -20,6 +20,7 @@
     "acorn": "^8.19.0",
     "agents": "^0.28.0",
     "evlog": "^2.31.0",
+    "jose": "6.2.12",
     "ofetch": "^1.5.1",
     "zod": "^4.6.6"
   },

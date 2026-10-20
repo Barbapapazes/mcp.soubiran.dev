@@ -18,6 +18,9 @@ export default defineConfig({
           PAGES_EN_URL: 'https://beta.soubiran.dev/pages.en.json',
           PAGES_FR_URL: 'https://beta.soubiran.dev/pages.fr.json',
           CORS_ALLOWED_ORIGIN: 'https://example.com',
+          MCP_PUBLIC_ORIGIN: 'https://mcp.soubiran.dev',
+          PASSPORT_ISSUER: 'https://api.soubiran.dev',
+          PASSPORT_JWKS_URL: 'https://api.soubiran.dev/.well-known/jwks.json',
           TOPOLOGY_URL: 'https://beta.soubiran.dev/infra/topology.json',
         },
         workerLoaders: {

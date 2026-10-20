@@ -24,7 +24,7 @@ const frenchPage = { ...page, id: 'posts/fr/page.md', locale: 'fr', url: '/fr/po
 const env = {
   PAGES_EN_URL: 'https://beta.soubiran.dev/pages.en.json',
   PAGES_FR_URL: 'https://beta.soubiran.dev/pages.fr.json',
-} as Env
+} as unknown as Env
 
 function mockFeeds(en = [page], fr = [frenchPage]) {
   const fetch = vi.fn(async (input: string | URL | Request) => new Response(JSON.stringify(input.toString().endsWith('pages.fr.json') ? fr : en), { headers: { 'Content-Type': 'application/json' } }))
@@ -90,14 +90,14 @@ describe('unified pages', () => {
   it('registers tools without fetching any catalogs', () => {
     const fetch = mockFeeds()
     const { server, registerTool } = mockServer()
-    registerContentTools(server, env)
+    registerContentTools(server, env, { kind: 'service', scopes: ['mcp:content:read'] })
     expect(registerTool.mock.calls.map(call => call[0])).toEqual(['list_pages', 'get_page', 'search_content'])
     expect(fetch).not.toHaveBeenCalled()
   })
 
   it('registers explicit safety annotations for all tools', () => {
     const { server, registerTool } = mockServer()
-    registerContentTools(server, env)
+    registerContentTools(server, env, { kind: 'service', scopes: ['mcp:content:read'] })
     expect(registerTool.mock.calls).toHaveLength(3)
     for (const [, config] of registerTool.mock.calls) {
       expect(config.annotations).toMatchObject({
@@ -111,7 +111,7 @@ describe('unified pages', () => {
   it('returns a not-found error for pages not yet published', async () => {
     mockFeeds()
     const { server, registerTool } = mockServer()
-    registerGetPageTool(server, env)
+    registerGetPageTool(server, env, { kind: 'service', scopes: ['mcp:content:read'] })
     const result = await registerTool.mock.calls[0]![2]({ id: 'missing' })
     expect(result.isError).toBe(true)
     expect(result.content[0].text).toContain('No content matches')
@@ -126,14 +126,14 @@ describe('unified pages', () => {
       return new Response(JSON.stringify(input.toString().endsWith('pages.fr.json') ? [frenchPage] : [page]), { headers: { 'Content-Type': 'application/json' } })
     })
     const { server, registerTool } = mockServer()
-    registerGetPageTool(server, env)
+    registerGetPageTool(server, env, { kind: 'service', scopes: ['mcp:content:read'] })
     expect(await registerTool.mock.calls[0]![2]({ id: page.id })).toEqual({ content: [{ type: 'text', text: '# Full page' }] })
   })
 
   it.each([registerGetPageTool, registerListPagesTool])('reports feed failures as tool errors', async (register) => {
     mockFeeds([{ ...page, locale: 'invalid' }])
     const { server, registerTool } = mockServer()
-    register(server, env)
+    register(server, env, { kind: 'service', scopes: ['mcp:content:read'] })
     expect(await registerTool.mock.calls[0]![2]({ id: page.id, code: 'async () => pages' })).toEqual({
       isError: true,
       content: [{ type: 'text', text: 'Unable to retrieve the pages.' }],
@@ -144,7 +144,7 @@ describe('unified pages', () => {
     mockFeeds()
     const { server, registerTool } = mockServer()
     const codeEnv = { ...env, CONTENT_LOADER: mockLoader({ resultJson: '["page-1"]' }).loader } as Env
-    registerListPagesTool(server, codeEnv)
+    registerListPagesTool(server, codeEnv, { kind: 'service', scopes: ['mcp:content:read'] })
     const run = registerTool.mock.calls[0]![2]
     expect(await run({ code: 'async () => pages' })).toEqual({ content: [{ type: 'text', text: '["page-1"]' }] })
     expect(await run({ code: '() => pages' })).toMatchObject({ isError: true, content: [{ text: 'Code must be a single async JavaScript arrow function.' }] })
@@ -161,7 +161,7 @@ describe('unified pages', () => {
       { instance_id: 'soubiran-dev', score: 0.8, text: 'Missing', item: { key: '/missing', metadata: { id: 'missing' } } },
     ] }))
     const { server, registerTool } = mockServer()
-    registerSearchContentTool(server, { ...env, AI_SEARCH: { search } } as unknown as Env)
+    registerSearchContentTool(server, { ...env, AI_SEARCH: { search } } as unknown as Env, { kind: 'service', scopes: ['mcp:content:read'] })
     const result = await registerTool.mock.calls[0]![2]({ query: 'page' })
     const data = JSON.parse(result.content[0].text)
     expect(data.results).toHaveLength(1)
@@ -178,7 +178,7 @@ describe('unified pages', () => {
       { instance_id: 'soubiran-dev', score: 0.9, text: 'Excerpt', item: { key: '/posts/page', metadata: { id: page.id, sha256: 'hash', chunk_modality: 'text' } } },
     ] }))
     const { server, registerTool } = mockServer()
-    registerSearchContentTool(server, { ...env, AI_SEARCH: { search } } as unknown as Env)
+    registerSearchContentTool(server, { ...env, AI_SEARCH: { search } } as unknown as Env, { kind: 'service', scopes: ['mcp:content:read'] })
     const result = await registerTool.mock.calls[0]![2]({ query: 'page' })
     const data = JSON.parse(result.content[0].text)
     expect(data).toEqual({ results: [{
@@ -205,7 +205,7 @@ describe('unified pages', () => {
       { instance_id: 'soubiran-dev', score: 0.9, text: 'Best English excerpt', item: { metadata: { id: page.id } } },
     ] }))
     const { server, registerTool } = mockServer()
-    registerSearchContentTool(server, { ...env, AI_SEARCH: { search } } as unknown as Env)
+    registerSearchContentTool(server, { ...env, AI_SEARCH: { search } } as unknown as Env, { kind: 'service', scopes: ['mcp:content:read'] })
     const result = await registerTool.mock.calls[0]![2]({ query: 'page' })
     const data = JSON.parse(result.content[0].text)
     expect(data.results.map((result: { excerpt: string }) => result.excerpt)).toEqual(['Best English excerpt', 'French excerpt'])
@@ -224,7 +224,7 @@ describe('unified pages', () => {
       ]),
     ] }))
     const { server, registerTool } = mockServer()
-    registerSearchContentTool(server, { ...env, AI_SEARCH: { search } } as unknown as Env)
+    registerSearchContentTool(server, { ...env, AI_SEARCH: { search } } as unknown as Env, { kind: 'service', scopes: ['mcp:content:read'] })
     const result = await registerTool.mock.calls[0]![2]({ query: 'page' })
     const data = JSON.parse(result.content[0].text)
     expect(data.results.map((result: { content: { id: string } }) => result.content.id)).toEqual(pages.slice(0, 8).map(page => page.id))
@@ -242,7 +242,7 @@ describe('unified pages', () => {
       { instance_id: 'soubiran-dev', score: 0.8, text: 'Second', item: { metadata: { id: secondPost.id } } },
     ] }))
     const { server, registerTool } = mockServer()
-    registerSearchContentTool(server, { ...env, AI_SEARCH: { search } } as unknown as Env)
+    registerSearchContentTool(server, { ...env, AI_SEARCH: { search } } as unknown as Env, { kind: 'service', scopes: ['mcp:content:read'] })
     const run = registerTool.mock.calls[0]![2]
     const result = await run({ query: 'Cloudflare', locale: 'en', type: 'post', limit: 2 })
     expect(JSON.parse(result.content[0].text).results.map((result: { content: { id: string } }) => result.content.id)).toEqual([page.id, secondPost.id])
@@ -258,7 +258,7 @@ describe('unified pages', () => {
 
   it('validates search inputs and keeps existing query-only calls valid', () => {
     const { server, registerTool } = mockServer()
-    registerSearchContentTool(server, env)
+    registerSearchContentTool(server, env, { kind: 'service', scopes: ['mcp:content:read'] })
     const { inputSchema, description } = registerTool.mock.calls[0]![1]
     expect(inputSchema.query.parse('  Cloudflare  ')).toBe('Cloudflare')
     expect(inputSchema.locale.parse(undefined)).toBeUndefined()
@@ -283,7 +283,7 @@ describe('unified pages', () => {
       { instance_id: 'soubiran-dev', score: 0.8, text: 'Duplicate', item: { metadata: { id: page.id } } },
     ]) }))
     const { server, registerTool } = mockServer()
-    registerSearchContentTool(server, { ...env, AI_SEARCH: { search } } as unknown as Env)
+    registerSearchContentTool(server, { ...env, AI_SEARCH: { search } } as unknown as Env, { kind: 'service', scopes: ['mcp:content:read'] })
     const result = await registerTool.mock.calls[0]![2]({ query: 'Cloudflare' })
     expect(JSON.parse(result.content[0].text).results).toHaveLength(8)
     expect(new TextEncoder().encode(result.content[0].text).byteLength).toBeLessThan(45 * 1024)
@@ -300,7 +300,7 @@ describe('unified pages', () => {
       { instance_id: 'soubiran-dev', score: 0.9, text, item: { metadata: { id: page.id } } },
     ] }))
     const { server, registerTool } = mockServer()
-    registerSearchContentTool(server, { ...env, AI_SEARCH: { search } } as unknown as Env)
+    registerSearchContentTool(server, { ...env, AI_SEARCH: { search } } as unknown as Env, { kind: 'service', scopes: ['mcp:content:read'] })
     const result = await registerTool.mock.calls[0]![2]({ query: 'page' })
     expect(JSON.parse(result.content[0].text).results[0].excerpt).toBe(expected)
   })
@@ -309,7 +309,7 @@ describe('unified pages', () => {
     mockFeeds()
     const search = vi.fn(async () => ({ chunks: [], errors: [{ instance_id: 'soubiran-dev', message: 'Temporarily unavailable' }] }))
     const { server, registerTool } = mockServer()
-    registerSearchContentTool(server, { ...env, AI_SEARCH: { search } } as unknown as Env)
+    registerSearchContentTool(server, { ...env, AI_SEARCH: { search } } as unknown as Env, { kind: 'service', scopes: ['mcp:content:read'] })
     const result = await registerTool.mock.calls[0]![2]({ query: 'page' })
     expect(JSON.parse(result.content[0].text)).toEqual({ results: [], warnings: ['Search failed for soubiran-dev: Temporarily unavailable'] })
   })
@@ -317,7 +317,7 @@ describe('unified pages', () => {
   it('does not assert corpus-wide absence for an empty search without warnings', async () => {
     mockFeeds()
     const { server, registerTool } = mockServer()
-    registerSearchContentTool(server, { ...env, AI_SEARCH: { search: async () => ({ chunks: [] }) } } as unknown as Env)
+    registerSearchContentTool(server, { ...env, AI_SEARCH: { search: async () => ({ chunks: [] }) } } as unknown as Env, { kind: 'service', scopes: ['mcp:content:read'] })
     expect(await registerTool.mock.calls[0]![2]({ query: 'page' })).toEqual({ content: [{ type: 'text', text: 'No matching pages were returned for this query and filters. This does not establish that no such content exists on the site.' }] })
   })
 
@@ -325,7 +325,7 @@ describe('unified pages', () => {
     mockFeeds([{ ...page, locale: 'invalid' }])
     const search = vi.fn().mockRejectedValue(new Error('Search unavailable'))
     const { server, registerTool } = mockServer()
-    registerSearchContentTool(server, { ...env, AI_SEARCH: { search } } as unknown as Env)
+    registerSearchContentTool(server, { ...env, AI_SEARCH: { search } } as unknown as Env, { kind: 'service', scopes: ['mcp:content:read'] })
     expect(await registerTool.mock.calls[0]![2]({ query: 'page' })).toMatchObject({ isError: true, content: [{ text: 'Unable to search content: Search unavailable' }] })
   })
 })

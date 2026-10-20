@@ -1,11 +1,13 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { Principal } from '../../auth'
 import * as Sentry from '@sentry/cloudflare'
 import { z } from 'zod'
+import { requireTool } from '../../auth'
 import { createToolLogger, recordTool } from '../../telemetry'
 import { errorResult, textResult } from '../../utils'
 import { loadPages, retrievePage } from './pages'
 
-export function registerGetPageTool(server: McpServer, env: Env) {
+export function registerGetPageTool(server: McpServer, env: Env, principal: Principal) {
   server.registerTool(
     'get_page',
     {
@@ -14,6 +16,7 @@ export function registerGetPageTool(server: McpServer, env: Env) {
       inputSchema: { id: z.string().trim().min(1).describe('Exact globally unique page ID returned by search_content or list_pages.') },
     },
     async ({ id }) => {
+      requireTool(principal, 'get_page')
       const startedAt = performance.now()
       const log = createToolLogger()
       let pages

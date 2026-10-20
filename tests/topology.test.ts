@@ -51,7 +51,7 @@ const snapshot = {
     ecosystem: [],
   }],
 }
-const env = { TOPOLOGY_URL: 'https://beta.soubiran.dev/infra/topology.json' } as Env
+const env = { TOPOLOGY_URL: 'https://beta.soubiran.dev/infra/topology.json' } as unknown as Env
 
 function mockFeed(value: unknown = snapshot) {
   const fetch = vi.fn(async (_input: string | URL | Request) => new Response(JSON.stringify(value), { headers: { 'Content-Type': 'application/json' } }))
@@ -73,7 +73,7 @@ function localLoader() {
 
 function register(loader = localLoader().loader) {
   const registerTool = vi.fn()
-  registerTopologyTools({ registerTool } as unknown as McpServer, { ...env, TOPOLOGY_LOADER: loader } as Env)
+  registerTopologyTools({ registerTool } as unknown as McpServer, { ...env, TOPOLOGY_LOADER: loader } as Env, { kind: 'interactive', scopes: ['mcp:infra:read'] })
   return { registerTool, run: registerTool.mock.calls[0]![2] }
 }
 
