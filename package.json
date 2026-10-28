@@ -18,20 +18,20 @@
     "@modelcontextprotocol/sdk": "1.32.1",
     "@sentry/cloudflare": "^10.76.2",
     "acorn": "^8.19.0",
-    "agents": "^0.28.1",
+    "agents": "^0.29.0",
     "evlog": "^2.33.1",
     "ofetch": "^1.5.1",
     "zod": "^4.6.7"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^5.4.1",
-    "@cloudflare/vitest-plugin": "^1.4.4",
+    "@cloudflare/vitest-plugin": "^1.4.6",
     "@types/node": "^24.19.2",
-    "cf": "1.0.0-beta.18",
+    "cf": "1.0.0-beta.20",
     "eslint": "^9.39.5",
     "taze": "^19.17.2",
     "typescript": "^5.9.3",
     "vitest": "^4.1.12",
-    "wrangler": "^4.151.1"
+    "wrangler": "^4.151.3"
   }
 }
