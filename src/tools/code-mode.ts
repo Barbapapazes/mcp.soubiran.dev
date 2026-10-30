@@ -22,7 +22,7 @@ function validateCode(code: string) {
   }
 }
 
-function createWorkerCode(data: unknown, code: string, binding: 'pages' | 'topology') {
+function createWorkerCode(data: unknown, code: string, binding: 'pages' | 'topology' | 'quickNews') {
   return `
 import { WorkerEntrypoint } from 'cloudflare:workers'
 
@@ -53,7 +53,7 @@ function deepFreeze(value) {
   return Object.freeze(value)
 }
 
-const ${binding} = deepFreeze(${JSON.stringify(data)})
+const ${binding === 'quickNews' ? '{ news, categories }' : binding} = deepFreeze(${JSON.stringify(data)})
 const submittedFunction = (
 ${code}
 )
@@ -79,7 +79,7 @@ export default class SnapshotCodeExecutor extends WorkerEntrypoint {
 `
 }
 
-export async function executeSnapshotCode(loader: WorkerLoader, data: unknown, code: string, binding: 'pages' | 'topology') {
+export async function executeSnapshotCode(loader: WorkerLoader, data: unknown, code: string, binding: 'pages' | 'topology' | 'quickNews') {
   validateCode(code)
 
   try {

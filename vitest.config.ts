@@ -19,6 +19,7 @@ export default defineConfig({
           PAGES_FR_URL: 'https://beta.soubiran.dev/pages.fr.json',
           CORS_ALLOWED_ORIGIN: 'https://example.com',
           TOPOLOGY_URL: 'https://beta.soubiran.dev/infra/topology.json',
+          QUICK_NEWS_API_URL: 'https://api.soubiran.dev/api/quick-news',
         },
         workerLoaders: {
           CONTENT_LOADER: {},

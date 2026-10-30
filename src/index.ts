@@ -4,21 +4,36 @@ import { createMcpHandler } from 'agents/mcp'
 import { createWorkersLogger } from 'evlog/workers'
 import { shapeError } from './error-context'
 import { registerContentTools } from './tools/content'
+import { registerQuickNewsTools } from './tools/quick-news'
 import { registerTopologyTools } from './tools/topology'
 import { SITE_URL } from './utils'
 
-function createServer(env: Env, topology: boolean) {
+function createServer(env: Env, route: string) {
+  const topology = route === '/infra/mcp'
+  const quickNews = route === '/quick-news/mcp'
+  let name = 'Estéban\'s MCP Server for soubiran.dev'
+  if (quickNews)
+    name = 'Estéban\'s Quick News MCP'
+  else if (topology)
+    name = 'Estéban\'s Infrastructure Topology MCP'
+
   const server = new McpServer({
-    name: topology ? 'Estéban\'s Infrastructure Topology MCP' : 'Estéban\'s MCP Server for soubiran.dev',
+    name,
     version: '1.0.0',
   })
 
-  if (topology)
+  if (quickNews)
+    registerQuickNewsTools(server, env)
+  else if (topology)
     registerTopologyTools(server, env)
   else
     registerContentTools(server, env)
 
   return server
+}
+
+function isMcpRoute(path: string) {
+  return path === '/mcp' || path === '/infra/mcp' || path === '/quick-news/mcp'
 }
 
 export default Sentry.withSentry(
@@ -44,8 +59,8 @@ export default Sentry.withSentry(
             headers: { 'Content-Type': 'text/plain; charset=utf-8' },
           })
         }
-        else if (url.pathname === '/mcp' || url.pathname === '/infra/mcp') {
-          response = await createMcpHandler(createServer(env, url.pathname === '/infra/mcp'), {
+        else if (isMcpRoute(url.pathname)) {
+          response = await createMcpHandler(createServer(env, url.pathname), {
             corsOptions: { origin: env.CORS_ALLOWED_ORIGIN },
             route: url.pathname,
           })(request, env, ctx)
@@ -65,7 +80,7 @@ export default Sentry.withSentry(
 
       log.set({
         request: { durationMs: Math.round(performance.now() - startedAt) },
-        mcp: { route: url.pathname === '/mcp' || url.pathname === '/infra/mcp', outcome },
+        mcp: { route: isMcpRoute(url.pathname), outcome },
       })
       log.emit()
       return response

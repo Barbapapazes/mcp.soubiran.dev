@@ -37,6 +37,13 @@ export default defineConfig({
           remote: true,
         },
       }),
+      QUICK_NEWS_API_URL: bindings.text('https://api.soubiran.dev/api/quick-news'),
+      QUICK_NEWS_AI_SEARCH: bindings.aiSearchNamespace({
+        namespace: 'default',
+        dev: {
+          remote: true,
+        },
+      }),
       CONTENT_LOADER: bindings.workerLoader(),
       TOPOLOGY_URL: bindings.text('https://beta.soubiran.dev/infra/topology.json'),
       TOPOLOGY_LOADER: bindings.workerLoader(),

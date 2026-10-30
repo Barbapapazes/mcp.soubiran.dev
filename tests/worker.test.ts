@@ -20,9 +20,11 @@ vi.mock('agents/mcp', () => ({ createMcpHandler }))
 vi.mock('evlog/workers', () => ({ createWorkersLogger: () => log }))
 vi.mock('../src/tools/content', () => ({ registerContentTools: vi.fn() }))
 vi.mock('../src/tools/topology', () => ({ registerTopologyTools: vi.fn() }))
+vi.mock('../src/tools/quick-news', () => ({ registerQuickNewsTools: vi.fn() }))
 
 const { registerContentTools } = await import('../src/tools/content')
 const { registerTopologyTools } = await import('../src/tools/topology')
+const { registerQuickNewsTools } = await import('../src/tools/quick-news')
 
 const { default: worker } = await import('../src/index')
 async function fetchWorker(url: string) {
@@ -85,10 +87,27 @@ describe('worker requests', () => {
     })
   })
 
+  it('serves a separate public Quick News MCP without content or topology tools', async () => {
+    const response = await fetchWorker('https://mcp.soubiran.dev/quick-news/mcp')
+    expect(response.status).toBe(200)
+    expect(createMcpHandler).toHaveBeenCalledWith(expect.anything(), {
+      corsOptions: { origin: env.CORS_ALLOWED_ORIGIN },
+      route: '/quick-news/mcp',
+    })
+    expect(registerQuickNewsTools).toHaveBeenCalledTimes(1)
+    expect(registerContentTools).not.toHaveBeenCalled()
+    expect(registerTopologyTools).not.toHaveBeenCalled()
+    expect(log.set).toHaveBeenLastCalledWith({
+      request: { durationMs: expect.any(Number) },
+      mcp: { route: true, outcome: 'success' },
+    })
+  })
+
   it('keeps the original endpoint content-only', async () => {
     await fetchWorker('https://mcp.soubiran.dev/mcp')
     expect(registerContentTools).toHaveBeenCalledTimes(1)
     expect(registerTopologyTools).not.toHaveBeenCalled()
+    expect(registerQuickNewsTools).not.toHaveBeenCalled()
   })
 
   it('records handler failures once, including duration and internal-error outcome', async () => {
