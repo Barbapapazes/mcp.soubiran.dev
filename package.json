@@ -25,13 +25,13 @@
   },
   "devDependencies": {
     "@antfu/eslint-config": "^5.4.1",
-    "@cloudflare/vitest-plugin": "^1.4.7",
+    "@cloudflare/vitest-plugin": "^1.4.8",
     "@types/node": "^24.19.2",
-    "cf": "1.0.0-beta.21",
+    "cf": "1.0.0-beta.23",
     "eslint": "^9.39.5",
     "taze": "^19.17.2",
     "typescript": "^5.9.3",
     "vitest": "^4.1.12",
-    "wrangler": "^4.152.0"
+    "wrangler": "^4.153.0"
   }
 }
