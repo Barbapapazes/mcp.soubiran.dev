@@ -118,7 +118,7 @@ describe('unified pages', () => {
     expect(result.content[0].text).toContain('Use search_content or list_pages to find an exact ID.')
   })
 
-  it('returns the full Markdown for an exact page ID', async () => {
+  it('returns the page ID, title, and full Markdown for an exact page ID', async () => {
     const fetch = mockFeeds()
     fetch.mockImplementation(async (input) => {
       if (input.toString().endsWith('.md'))
@@ -127,7 +127,9 @@ describe('unified pages', () => {
     })
     const { server, registerTool } = mockServer()
     registerGetPageTool(server, env)
-    expect(await registerTool.mock.calls[0]![2]({ id: page.id })).toEqual({ content: [{ type: 'text', text: '# Full page' }] })
+    expect(await registerTool.mock.calls[0]![2]({ id: page.id })).toEqual({
+      content: [{ type: 'text', text: JSON.stringify({ id: page.id, title: page.title, content: '# Full page' }) }],
+    })
   })
 
   it.each([registerGetPageTool, registerListPagesTool])('reports feed failures as tool errors', async (register) => {
