@@ -4,6 +4,7 @@ import { createMcpHandler } from 'agents/mcp'
 import { createWorkersLogger } from 'evlog/workers'
 import { shapeError } from './error-context'
 import { registerContentTools } from './tools/content'
+import { registerFeedbackTool } from './tools/feedback'
 import { registerTopologyTools } from './tools/topology'
 import { SITE_URL } from './utils'
 
@@ -17,6 +18,8 @@ function createServer(env: Env, topology: boolean) {
     registerTopologyTools(server, env)
   else
     registerContentTools(server, env)
+
+  registerFeedbackTool(server, env, topology ? 'infrastructure' : 'content')
 
   return server
 }

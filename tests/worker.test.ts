@@ -20,9 +20,11 @@ vi.mock('agents/mcp', () => ({ createMcpHandler }))
 vi.mock('evlog/workers', () => ({ createWorkersLogger: () => log }))
 vi.mock('../src/tools/content', () => ({ registerContentTools: vi.fn() }))
 vi.mock('../src/tools/topology', () => ({ registerTopologyTools: vi.fn() }))
+vi.mock('../src/tools/feedback', () => ({ registerFeedbackTool: vi.fn() }))
 
 const { registerContentTools } = await import('../src/tools/content')
 const { registerTopologyTools } = await import('../src/tools/topology')
+const { registerFeedbackTool } = await import('../src/tools/feedback')
 
 const { default: worker } = await import('../src/index')
 async function fetchWorker(url: string) {
@@ -77,6 +79,7 @@ describe('worker requests', () => {
       corsOptions: { origin: env.CORS_ALLOWED_ORIGIN },
       route: '/infra/mcp',
     })
+    expect(registerFeedbackTool).toHaveBeenCalledWith(expect.anything(), env, 'infrastructure')
     expect(registerTopologyTools).toHaveBeenCalledTimes(1)
     expect(registerContentTools).not.toHaveBeenCalled()
     expect(log.set).toHaveBeenLastCalledWith({
@@ -85,8 +88,9 @@ describe('worker requests', () => {
     })
   })
 
-  it('keeps the original endpoint content-only', async () => {
+  it('keeps the original endpoint on content tools with shared feedback', async () => {
     await fetchWorker('https://mcp.soubiran.dev/mcp')
+    expect(registerFeedbackTool).toHaveBeenCalledWith(expect.anything(), env, 'content')
     expect(registerContentTools).toHaveBeenCalledTimes(1)
     expect(registerTopologyTools).not.toHaveBeenCalled()
   })

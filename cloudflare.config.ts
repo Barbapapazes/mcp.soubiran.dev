@@ -40,6 +40,10 @@ export default defineConfig({
       CONTENT_LOADER: bindings.workerLoader(),
       TOPOLOGY_URL: bindings.text('https://beta.soubiran.dev/infra/topology.json'),
       TOPOLOGY_LOADER: bindings.workerLoader(),
+      MCP_FEEDBACK_URL: bindings.text('https://api.soubiran.dev/api/internal/mcp-feedback'),
+      // Dedicated Access service token, authorized only for the feedback intake path.
+      MCP_FEEDBACK_ACCESS_CLIENT_ID: bindings.secret(),
+      MCP_FEEDBACK_ACCESS_CLIENT_SECRET: bindings.secret(),
       SENTRY_DSN: bindings.secret(),
       // @sentry/cloudflare uses this binding's id as the default release.
       CF_VERSION_METADATA: bindings.versionMetadata(),
