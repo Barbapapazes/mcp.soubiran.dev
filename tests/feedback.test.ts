@@ -1,7 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { feedbackInputSchema, registerFeedbackTool, scrubFeedbackText } from '../src/tools/feedback'
+import { feedbackInputSchema, registerFeedbackTool } from '../src/tools/feedback'
 
 const { recordTool, log } = vi.hoisted(() => ({
   recordTool: vi.fn(),
@@ -159,7 +159,7 @@ describe('MCP feedback', () => {
     expect(feedbackInputSchema.safeParse({ ...input, impact: 'critical' }).success).toBe(false)
   })
 
-  it('scrubs credentials from all free-text report fields before forwarding', async () => {
+  it('forwards free-text report fields without redaction', async () => {
     const fetch = vi.fn().mockResolvedValue(accepted())
     vi.stubGlobal('fetch', fetch)
     await register().handler({
@@ -168,16 +168,11 @@ describe('MCP feedback', () => {
       description: 'Request failed with api_key=private-key and Bearer report-secret',
       toolName: 'password=tool-secret',
     })
-    const body = fetch.mock.calls[0]![1].body
-    expect(body).toContain('[REDACTED')
-    expect(body).not.toContain('task-secret')
-    expect(body).not.toContain('report-secret')
-    expect(body).not.toContain('private-key')
-    expect(body).not.toContain('tool-secret')
-  })
-
-  it('redacts private keys and URL credentials while preserving public evidence URLs', () => {
-    const text = '-----BEGIN PRIVATE KEY-----\nsecret\n-----END PRIVATE KEY----- https://user:pass@example.com/path https://soubiran.dev/article'
-    expect(scrubFeedbackText(text)).toBe('[REDACTED PRIVATE KEY] https://[REDACTED]@example.com/path https://soubiran.dev/article')
+    const body = JSON.parse(fetch.mock.calls[0]![1].body)
+    expect(body).toMatchObject({
+      task: 'Read with Bearer task-secret',
+      description: 'Request failed with api_key=private-key and Bearer report-secret',
+      tool_name: 'password=tool-secret',
+    })
   })
 })

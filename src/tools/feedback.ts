@@ -17,18 +17,8 @@ export const feedbackInputSchema = z.object({
 const outputSchema = z.object({ feedbackId: z.uuid() })
 const responseSchema = z.object({ data: z.object({ id: z.uuid() }) })
 
-/** Best-effort credential redaction; callers must still exclude sensitive data. */
-export function scrubFeedbackText(text: string): string {
-  return text
-    .replace(/-----BEGIN [^-]*PRIVATE KEY-----[\s\S]*?-----END [^-]*PRIVATE KEY-----/g, '[REDACTED PRIVATE KEY]')
-    .replace(/\b(?:Bearer|Basic)\s+[a-z0-9._~+/=-]+/gi, '[REDACTED AUTHORIZATION]')
-    .replace(/\b(?:gh[pousr]_[a-z0-9_]+|github_pat_[a-z0-9_]+|sk-[a-z0-9_-]{16,})\b/gi, '[REDACTED TOKEN]')
-    .replace(/((?:api[_-]?key|access[_-]?token|refresh[_-]?token|client[_-]?secret|password|cf-access-client-(?:id|secret))\s*["']?\s*[:=]\s*["']?)[^\s"'&,;}]+/gi, '$1[REDACTED]')
-    .replace(/(https?:\/\/)[^\s/@]+:[^\s/@]+@/gi, '$1[REDACTED]@')
-}
-
 function boundedContext(value: unknown): string | undefined {
-  return typeof value === 'string' && value.trim() ? scrubFeedbackText(value.trim()).slice(0, 100) : undefined
+  return typeof value === 'string' && value.trim() ? value.trim().slice(0, 100) : undefined
 }
 
 export function registerFeedbackTool(server: McpServer, env: Env, source: 'content' | 'infrastructure') {
@@ -57,11 +47,11 @@ export function registerFeedbackTool(server: McpServer, env: Env, source: 'conte
     // Serialize once so both transport attempts carry the same identity and content.
     const body = JSON.stringify({
       submission_id: crypto.randomUUID(),
-      task: scrubFeedbackText(report.task).slice(0, 200),
+      task: report.task,
       kind: report.kind,
       impact: report.impact,
-      description: scrubFeedbackText(report.description).slice(0, 4096),
-      tool_name: report.toolName ? scrubFeedbackText(report.toolName).slice(0, 100) : undefined,
+      description: report.description,
+      tool_name: report.toolName,
       source,
       release: boundedContext(env.CF_VERSION_METADATA?.id),
       client_name: boundedContext(client?.name),
